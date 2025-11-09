@@ -1,0 +1,396 @@
+.apply-institutions {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.application-form-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.application-form {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-section {
+  margin-bottom: 30px;
+}
+
+.form-section h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.3rem;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.course-details {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  border-left: 4px solid #667eea;
+}
+
+.course-details h4 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.details-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-item strong {
+  color: #333;
+}
+
+.detail-item span {
+  color: #666;
+  text-align: right;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.application-info {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+}
+
+.application-info h3 {
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.info-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.info-card {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.info-icon {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.info-card h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.info-card p {
+  margin: 0;
+  color: #666;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .application-form-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .application-form {
+    padding: 20px;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .detail-item span {
+    text-align: left;
+  }
+}
+
+/* Add these styles to the existing CSS file */
+
+.subjects-form-section {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.subjects-form h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.subjects-form p {
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.subject-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.subject-input:hover {
+  border-color: #667eea;
+}
+
+.subject-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.subject-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.grade-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.grade-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.subjects-actions {
+  text-align: center;
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.requirement {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.requirement.met {
+  background: #d1edff;
+  color: #155724;
+}
+
+.requirement.not-met {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.subjects-summary {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.subjects-summary h4 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.subjects-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.subject-result {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.subject-result:last-child {
+  border-bottom: none;
+}
+
+.btn-outline.small {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .subjects-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .subject-input {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .grade-input {
+    width: 100%;
+  }
+}
+
+/* Grade System Styles */
+.grade-select {
+  padding: 6px 8px;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  min-width: 120px;
+}
+
+.qualified-badge {
+  color: #155724;
+  background: #d1edff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.not-qualified-badge {
+  color: #721c24;
+  background: #f8d7da;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.loading-text {
+  color: #666;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+
+.requirement.met {
+  background: #d1edff;
+  color: #155724;
+}
+
+.requirement.not-met {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.req-subject {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.req-grade {
+  color: #666;
+}
+
+.student-grade {
+  color: #333;
+  font-style: italic;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .requirement {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .req-subject {
+    min-width: auto;
+  }
+}

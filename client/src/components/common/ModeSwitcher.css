@@ -1,0 +1,57 @@
+.mode-switcher {
+  display: flex;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 4px;
+  border: 2px solid #e9ecef;
+  margin: 0 10px;
+}
+
+.mode-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.mode-button:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.mode-button.active {
+  background: white;
+  color: #495057;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #dee2e6;
+}
+
+.mode-icon {
+  font-size: 16px;
+}
+
+.mode-text {
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mode-switcher {
+    margin: 10px 0;
+  }
+  
+  .mode-text {
+    display: none;
+  }
+  
+  .mode-button {
+    padding: 10px 12px;
+  }
+}

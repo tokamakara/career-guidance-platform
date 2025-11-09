@@ -1,0 +1,40 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-content {
+  display: flex;
+  flex: 1;
+  margin-top: 70px; /* Height of navbar */
+}
+
+.main-content {
+  flex: 1;
+  padding: 30px;
+  margin-left: 250px; /* Width of sidebar */
+  background: #f8f9fa;
+  min-height: calc(100vh - 70px);
+  overflow-y: auto;
+}
+
+.auth-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding: 20px 15px;
+  }
+  
+  .layout-content {
+    flex-direction: column;
+  }
+}
