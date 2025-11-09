@@ -29,19 +29,32 @@ export const validators = {
     return null;
   },
 
-  // Name validation
-  name: (value, fieldName = 'Name') => {
-    const error = validators.required(value, fieldName);
-    if (error) return error;
-    
-    if (value.length < 2) return `${fieldName} must be at least 2 characters long`;
-    if (value.length > 50) return `${fieldName} must be less than 50 characters`;
-    
-    const nameRegex = /^[a-zA-Z\s\-']+$/;
-    if (!nameRegex.test(value)) return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
-    
-    return null;
-  },
+// Enhanced name validation
+name: (value, fieldName = 'Name') => {
+  const error = validators.required(value, fieldName);
+  if (error) return error;
+  
+  if (value.length < 2) return `${fieldName} must be at least 2 characters long`;
+  if (value.length > 50) return `${fieldName} must be less than 50 characters`;
+  
+  // Enhanced regex: only letters, spaces, hyphens, apostrophes - no numbers or special characters
+  const nameRegex = /^[a-zA-ZÀ-ÿ\s\-']+$/;
+  if (!nameRegex.test(value)) {
+    return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
+  }
+  
+  // Check for consecutive special characters
+  if (/(\-\-)|(\'\')|(\s\s)/.test(value)) {
+    return `${fieldName} cannot have consecutive special characters`;
+  }
+  
+  // Check if starts/ends with special character
+  if (/^[\-\'\s]|[\-\'\s]$/.test(value)) {
+    return `${fieldName} cannot start or end with special characters`;
+  }
+  
+  return null;
+},
 
   // Phone number validation
   phone: (value) => {

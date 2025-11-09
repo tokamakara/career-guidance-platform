@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'; // Fixed path
-import { useNotification } from '../../context/NotificationContext'; // Fixed path
+import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
+import { validateForm, validationSchemas } from '../../utils/validators';
 import './Auth.css';
 
 const Login = () => {
@@ -9,6 +10,8 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   
   const { login, currentUser, userProfile } = useAuth();
@@ -42,14 +45,60 @@ const Login = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+
+    // Validate single field on blur
+    const fieldErrors = validateForm({ [name]: formData[name] }, { [name]: validationSchemas.login[name] });
+    if (fieldErrors.errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: fieldErrors.errors[name]
+      }));
+    }
+  };
+
+  const validateAllFields = () => {
+    const { errors: newErrors } = validateForm(formData, validationSchemas.login);
+    setErrors(newErrors);
+    setTouched({
+      email: true,
+      password: true
     });
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateAllFields()) {
+      addNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fix the errors in the form'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -64,11 +113,15 @@ const Login = () => {
       addNotification({
         type: 'error',
         title: 'Login Failed',
-        message: error.message
+        message: error.message || 'Invalid email or password'
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const getFieldError = (fieldName) => {
+    return touched[fieldName] && errors[fieldName];
   };
 
   return (
@@ -79,7 +132,7 @@ const Login = () => {
           <p>Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
             <input
@@ -88,9 +141,15 @@ const Login = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={handleBlur}
               required
               placeholder="Enter your email"
+              className={getFieldError('email') ? 'error' : ''}
+              disabled={loading}
             />
+            {getFieldError('email') && (
+              <span className="error-text">{errors.email}</span>
+            )}
           </div>
 
           <div className="form-group">
@@ -101,9 +160,15 @@ const Login = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              onBlur={handleBlur}
               required
               placeholder="Enter your password"
+              className={getFieldError('password') ? 'error' : ''}
+              disabled={loading}
             />
+            {getFieldError('password') && (
+              <span className="error-text">{errors.password}</span>
+            )}
           </div>
 
           <button 
@@ -111,7 +176,14 @@ const Login = () => {
             className="auth-button primary"
             disabled={loading}
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? (
+              <>
+                <span className="loading-spinner"></span>
+                Signing In...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
@@ -127,24 +199,6 @@ const Login = () => {
               Forgot your password?
             </Link>
           </p>
-        </div>
-
-        <div className="auth-demo">
-          <p className="demo-note">Demo Accounts:</p>
-          <div className="demo-accounts">
-            <div>
-              <strong>Admin:</strong> admin@careerplatform.com / admin123
-            </div>
-            <div>
-              <strong>Student:</strong> student@demo.com / student123
-            </div>
-            <div>
-              <strong>Institute:</strong> institute@demo.com / institute123
-            </div>
-            <div>
-              <strong>Company:</strong> company@demo.com / company123
-            </div>
-          </div>
         </div>
       </div>
     </div>
