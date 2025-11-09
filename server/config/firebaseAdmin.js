@@ -1,58 +1,68 @@
 const admin = require('firebase-admin');
-const path = require('path');
-const fs = require('fs');
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin for production
 try {
-  console.log('🔑 Initializing Firebase Admin...');
+  console.log('🔑 Initializing Firebase Admin for production...');
   
-  // Use service account key file - FIXED PATH
-  const serviceAccountPath = path.join(__dirname, 'keys', 'serviceAccountKey.json');
-  console.log('📁 Service account path:', serviceAccountPath);
-  
-  // Verify file exists and is readable
-  if (fs.existsSync(serviceAccountPath)) {
-    console.log('✅ Service account file found');
-    
-    // Read and parse the file manually to avoid any require caching issues
-    const serviceAccountJson = fs.readFileSync(serviceAccountPath, 'utf8');
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    
-    console.log('📋 Project ID:', serviceAccount.project_id);
-    console.log('📧 Client Email:', serviceAccount.client_email);
-    
-    // Initialize with the service account
+  if (process.env.NODE_ENV === 'production') {
+    // Production: Use environment variables
+    const serviceAccount = {
+      type: "service_account",
+      project_id: process.env.FIREBASE_PROJECT_ID || "job-int-123",
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+    };
+
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      storageBucket: "job-int-123.firebasestorage.app",
-      databaseURL: "https://job-int-123-default-rtdb.firebaseio.com"
+      storageBucket: "job-int-123.firebasestorage.app"
     });
-    
-    console.log('✅ Firebase Admin initialized successfully with service account');
+    console.log('✅ Firebase Admin initialized with environment variables');
   } else {
-    throw new Error('Service account file not found at: ' + serviceAccountPath);
+    // Development: Use service account file
+    const path = require('path');
+    const serviceAccountPath = path.join(__dirname, 'keys', 'serviceAccountKey.json');
+    
+    if (require('fs').existsSync(serviceAccountPath)) {
+      const serviceAccount = require(serviceAccountPath);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: "job-int-123.firebasestorage.app"
+      });
+      console.log('✅ Firebase Admin initialized with service account file');
+    } else {
+      // Fallback for development
+      admin.initializeApp({
+        projectId: "job-int-123",
+        storageBucket: "job-int-123.firebasestorage.app"
+      });
+      console.log('✅ Firebase Admin initialized with default config');
+    }
   }
-
 } catch (error) {
   console.error('❌ Firebase Admin initialization error:', error.message);
-  console.error('🔍 Error details:', error);
   
-  // Don't continue with fallback - we want the real setup
-  throw new Error('Firebase Admin initialization failed. Please check your service account file.');
+  // Final fallback
+  try {
+    admin.initializeApp({
+      projectId: "job-int-123",
+      storageBucket: "job-int-123.firebasestorage.app"
+    });
+    console.log('✅ Firebase Admin fallback initialization successful');
+  } catch (fallbackError) {
+    console.error('❌ All Firebase Admin initialization attempts failed');
+    // Don't throw error - let server start without Firebase Admin
+  }
 }
 
 const db = admin.firestore();
 const auth = admin.auth();
 const storage = admin.storage();
-
-// Test the connection
-console.log('🧪 Testing Firestore connection...');
-db.listCollections()
-  .then(collections => {
-    console.log(`✅ Firestore connected successfully. Collections count: ${collections.length}`);
-  })
-  .catch(err => {
-    console.error('❌ Firestore connection failed:', err.message);
-  });
 
 module.exports = { admin, db, auth, storage };
