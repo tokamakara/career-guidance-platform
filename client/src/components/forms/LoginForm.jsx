@@ -1,40 +1,90 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
+import { validateForm, validationSchemas } from '../../utils/validators';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   
   const { login } = useAuth();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+
+    // Validate single field
+    const { errors: fieldErrors } = validateForm(
+      { [name]: formData[name] }, 
+      { [name]: validationSchemas.login[name] }
+    );
+    
+    if (fieldErrors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: fieldErrors[name]
+      }));
+    }
+  };
+
+  const validateAllFields = () => {
+    const { isValid, errors: validationErrors } = validateForm(formData, validationSchemas.login);
+    setErrors(validationErrors);
+    setTouched({ email: true, password: true });
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
+
+    if (!validateAllFields()) {
+      setSubmitError('Please fix the errors in the form');
+      return;
+    }
+
     setLoading(true);
-    setError('');
 
     try {
       await login(formData.email, formData.password);
     } catch (err) {
-      setError(err.message || 'Failed to login');
+      setSubmitError(err.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
   };
 
+  const getFieldError = (fieldName) => {
+    return touched[fieldName] && errors[fieldName];
+  };
+
   return (
     <form onSubmit={handleSubmit} className="auth-form">
-      {error && <div className="error-message">{error}</div>}
+      {submitError && <div className="error-message">{submitError}</div>}
       
       <div className="form-group">
         <label htmlFor="email">Email</label>
@@ -44,9 +94,14 @@ const LoginForm = () => {
           name="email"
           value={formData.email}
           onChange={handleChange}
+          onBlur={handleBlur}
           required
           disabled={loading}
+          className={getFieldError('email') ? 'error' : ''}
         />
+        {getFieldError('email') && (
+          <span className="error-text">{errors.email}</span>
+        )}
       </div>
 
       <div className="form-group">
@@ -57,9 +112,14 @@ const LoginForm = () => {
           name="password"
           value={formData.password}
           onChange={handleChange}
+          onBlur={handleBlur}
           required
           disabled={loading}
+          className={getFieldError('password') ? 'error' : ''}
         />
+        {getFieldError('password') && (
+          <span className="error-text">{errors.password}</span>
+        )}
       </div>
 
       <button 

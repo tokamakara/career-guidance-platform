@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../../services/firebase'; // Fixed path
-import { useAuth } from '../../../context/AuthContext'; // Fixed path
-import { useNotification } from '../../../context/NotificationContext'; // Fixed path
+import { db } from '../../../services/firebase';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotification } from '../../../context/NotificationContext';
+import ModeSwitcher from '../../../components/common/ModeSwitcher';
 import './CareerDashboard.css';
 
 const CareerDashboard = () => {
@@ -95,6 +96,8 @@ const CareerDashboard = () => {
 
   return (
     <div className="career-dashboard">
+      <ModeSwitcher />
+      
       <div className="dashboard-header">
         <h1>Career Dashboard</h1>
         <p>Find your dream job and manage your career applications</p>

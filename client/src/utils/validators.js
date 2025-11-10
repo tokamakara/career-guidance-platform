@@ -11,6 +11,9 @@ export const validators = {
   password: (value) => {
     if (!value) return 'Password is required';
     if (value.length < 6) return 'Password must be at least 6 characters long';
+    if (!/(?=.*[a-z])/.test(value)) return 'Password must contain at least one lowercase letter';
+    if (!/(?=.*[A-Z])/.test(value)) return 'Password must contain at least one uppercase letter';
+    if (!/(?=.*\d)/.test(value)) return 'Password must contain at least one number';
     return null;
   },
 
@@ -29,40 +32,80 @@ export const validators = {
     return null;
   },
 
-// Enhanced name validation
-name: (value, fieldName = 'Name') => {
-  const error = validators.required(value, fieldName);
-  if (error) return error;
-  
-  if (value.length < 2) return `${fieldName} must be at least 2 characters long`;
-  if (value.length > 50) return `${fieldName} must be less than 50 characters`;
-  
-  // Enhanced regex: only letters, spaces, hyphens, apostrophes - no numbers or special characters
-  const nameRegex = /^[a-zA-ZÀ-ÿ\s\-']+$/;
-  if (!nameRegex.test(value)) {
-    return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
-  }
-  
-  // Check for consecutive special characters
-  if (/(\-\-)|(\'\')|(\s\s)/.test(value)) {
-    return `${fieldName} cannot have consecutive special characters`;
-  }
-  
-  // Check if starts/ends with special character
-  if (/^[\-\'\s]|[\-\'\s]$/.test(value)) {
-    return `${fieldName} cannot start or end with special characters`;
-  }
-  
-  return null;
-},
+  // Enhanced name validation - STRICTER VERSION
+  name: (value, fieldName = 'Name') => {
+    const error = validators.required(value, fieldName);
+    if (error) return error;
+    
+    const trimmedValue = value.trim();
+    
+    if (trimmedValue.length < 2) return `${fieldName} must be at least 2 characters long`;
+    if (trimmedValue.length > 50) return `${fieldName} must be less than 50 characters`;
+    
+    // STRICT regex: Only letters, spaces, hyphens, apostrophes - NO numbers or special symbols
+    const nameRegex = /^[A-Za-zÀ-ÿ]+([ '-][A-Za-zÀ-ÿ]+)*$/;
+    if (!nameRegex.test(trimmedValue)) {
+      return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes in proper format`;
+    }
+    
+    // Check for consecutive special characters
+    if (/(\-\-)|(\'\')|(\s\s)/.test(trimmedValue)) {
+      return `${fieldName} cannot have consecutive special characters`;
+    }
+    
+    // Check if starts/ends with special character
+    if (/^[\-\'\s]|[\-\'\s]$/.test(trimmedValue)) {
+      return `${fieldName} cannot start or end with spaces, hyphens, or apostrophes`;
+    }
+    
+    // Check for invalid patterns like multiple words without proper separation
+    if (/[A-Za-z]{20,}/.test(trimmedValue.replace(/[^A-Za-z]/g, ''))) {
+      return `${fieldName} appears to contain invalid character sequences`;
+    }
+    
+    return null;
+  },
+
+  // First name validation (even stricter)
+  firstName: (value) => {
+    return validators.name(value, 'First name');
+  },
+
+  // Last name validation
+  lastName: (value) => {
+    return validators.name(value, 'Last name');
+  },
+
+  // Institution/Company name validation
+  organizationName: (value, fieldName = 'Name') => {
+    const error = validators.required(value, fieldName);
+    if (error) return error;
+    
+    const trimmedValue = value.trim();
+    
+    if (trimmedValue.length < 2) return `${fieldName} must be at least 2 characters long`;
+    if (trimmedValue.length > 100) return `${fieldName} must be less than 100 characters`;
+    
+    // Allow letters, numbers, spaces, hyphens, apostrophes, and & for organization names
+    const orgRegex = /^[A-Za-zÀ-ÿ0-9&]+([ '-][A-Za-zÀ-ÿ0-9&]+)*$/;
+    if (!orgRegex.test(trimmedValue)) {
+      return `${fieldName} can only contain letters, numbers, spaces, hyphens, apostrophes, and ampersands`;
+    }
+    
+    return null;
+  },
 
   // Phone number validation
   phone: (value) => {
-    if (!value) return null; // Phone is optional
+    if (!value) return 'Phone number is required';
     
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (!phoneRegex.test(value.replace(/[\s\-\(\)]/g, ''))) {
-      return 'Please enter a valid phone number';
+    // Remove all non-digit characters except + at start
+    const cleanPhone = value.replace(/[^\d+]/g, '');
+    
+    // Validate phone format (international format allowed)
+    const phoneRegex = /^[\+]?[1-9][\d]{7,14}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      return 'Please enter a valid phone number (8-15 digits, can start with +)';
     }
     return null;
   },
@@ -72,10 +115,13 @@ name: (value, fieldName = 'Name') => {
     if (!value) return null; // URL is optional
     
     try {
-      new URL(value);
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return 'URL must start with http:// or https://';
+      }
       return null;
     } catch {
-      return 'Please enter a valid URL';
+      return 'Please enter a valid URL (e.g., https://example.com)';
     }
   },
 
@@ -85,6 +131,7 @@ name: (value, fieldName = 'Name') => {
     
     const num = Number(value);
     if (isNaN(num)) return `${fieldName} must be a valid number`;
+    if (!/^\d+$/.test(value.toString())) return `${fieldName} must contain only digits`;
     
     return null;
   },
@@ -108,6 +155,11 @@ name: (value, fieldName = 'Name') => {
     
     // Check if date is not in the future (for birth dates, etc.)
     if (date > new Date()) return `${fieldName} cannot be in the future`;
+    
+    // Check if person is at least 13 years old
+    const minAgeDate = new Date();
+    minAgeDate.setFullYear(minAgeDate.getFullYear() - 13);
+    if (date > minAgeDate) return 'You must be at least 13 years old';
     
     return null;
   },
@@ -141,6 +193,24 @@ name: (value, fieldName = 'Name') => {
     if (!value || !Array.isArray(value)) return `${fieldName} is required`;
     if (value.length < minLength) return `Please select at least ${minLength} ${fieldName.toLowerCase()}`;
     return null;
+  },
+
+  // Text validation for descriptions, etc.
+  text: (value, fieldName = 'Text', minLength = 10, maxLength = 1000) => {
+    const error = validators.required(value, fieldName);
+    if (error) return error;
+    
+    const trimmedValue = value.trim();
+    
+    if (trimmedValue.length < minLength) return `${fieldName} must be at least ${minLength} characters long`;
+    if (trimmedValue.length > maxLength) return `${fieldName} must be less than ${maxLength} characters`;
+    
+    // Basic sanity check for text content
+    if (/[<>]/.test(trimmedValue)) {
+      return `${fieldName} contains invalid characters`;
+    }
+    
+    return null;
   }
 };
 
@@ -165,6 +235,22 @@ export const validateForm = (formData, validationRules) => {
       if (error) {
         errors[field] = error;
       }
+    } else if (typeof rules === 'object') {
+      // Handle nested objects (like salaryRange: {min, max})
+      Object.keys(rules).forEach(subField => {
+        const subRules = rules[subField];
+        const subValue = value ? value[subField] : undefined;
+        
+        if (Array.isArray(subRules)) {
+          for (const rule of subRules) {
+            const error = rule(subValue, formData);
+            if (error) {
+              errors[`${field}.${subField}`] = error;
+              break;
+            }
+          }
+        }
+      });
     }
   });
 
@@ -172,6 +258,19 @@ export const validateForm = (formData, validationRules) => {
     isValid: Object.keys(errors).length === 0,
     errors
   };
+};
+
+// Real-time input validation for form fields
+export const validateInput = (value, rules, formData = {}) => {
+  if (Array.isArray(rules)) {
+    for (const rule of rules) {
+      const error = rule(value, formData);
+      if (error) return error;
+    }
+  } else if (typeof rules === 'function') {
+    return rules(value, formData);
+  }
+  return null;
 };
 
 // Common validation schemas
@@ -182,37 +281,74 @@ export const validationSchemas = {
   },
 
   register: {
-    firstName: [(value) => validators.name(value, 'First name')],
-    lastName: [(value) => validators.name(value, 'Last name')],
+    firstName: [validators.firstName],
+    lastName: [validators.lastName],
     email: [validators.required, validators.email],
     password: [validators.required, validators.password],
     confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
     role: [validators.required]
   },
 
+  studentRegister: {
+    firstName: [validators.firstName],
+    lastName: [validators.lastName],
+    email: [validators.required, validators.email],
+    password: [validators.required, validators.password],
+    confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
+    dateOfBirth: [(value) => validators.date(value, 'Date of birth')],
+    phone: [validators.phone],
+    highSchool: [validators.required]
+  },
+
+  institutionRegister: {
+    firstName: [validators.firstName],
+    lastName: [validators.lastName],
+    email: [validators.required, validators.email],
+    password: [validators.required, validators.password],
+    confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
+    institutionName: [(value) => validators.organizationName(value, 'Institution name')],
+    institutionType: [validators.required],
+    location: [validators.required],
+    phone: [validators.phone],
+    website: [validators.url]
+  },
+
+  companyRegister: {
+    firstName: [validators.firstName],
+    lastName: [validators.lastName],
+    email: [validators.required, validators.email],
+    password: [validators.required, validators.password],
+    confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
+    companyName: [(value) => validators.organizationName(value, 'Company name')],
+    industry: [validators.required],
+    size: [validators.required],
+    website: [validators.url],
+    phone: [validators.phone]
+  },
+
   studentProfile: {
     dateOfBirth: [(value) => validators.date(value, 'Date of birth')],
     phone: [validators.phone],
     highSchool: [validators.required],
-    address: [validators.required]
+    address: [(value) => validators.text(value, 'Address', 10, 200)]
   },
 
   institutionProfile: {
-    institutionName: [validators.required],
+    institutionName: [(value) => validators.organizationName(value, 'Institution name')],
     institutionType: [validators.required],
     location: [validators.required],
-    phone: [validators.required, validators.phone],
+    phone: [validators.phone],
     website: [validators.url],
-    description: [validators.required]
+    description: [(value) => validators.text(value, 'Description', 20, 500)]
   },
 
   companyProfile: {
-    companyName: [validators.required],
+    companyName: [(value) => validators.organizationName(value, 'Company name')],
     industry: [validators.required],
     size: [validators.required],
     website: [validators.url],
-    description: [validators.required],
-    phone: [validators.required, validators.phone]
+    description: [(value) => validators.text(value, 'Description', 20, 500)],
+    phone: [validators.phone]
   },
 
   jobPost: {
@@ -220,7 +356,7 @@ export const validationSchemas = {
     department: [validators.required],
     type: [validators.required],
     location: [validators.required],
-    description: [validators.required],
+    description: [(value) => validators.text(value, 'Description', 20, 1000)],
     requirements: [(value) => validators.array(value, 'Requirements')],
     qualifications: [(value) => validators.array(value, 'Qualifications')],
     salaryRange: {
@@ -228,5 +364,11 @@ export const validationSchemas = {
       max: [(value) => validators.positiveNumber(value, 'Maximum salary')]
     },
     applicationDeadline: [(value) => validators.required(value, 'Application deadline')]
+  },
+
+  courseApplication: {
+    institutionId: [validators.required],
+    facultyId: [validators.required],
+    courseId: [validators.required]
   }
 };

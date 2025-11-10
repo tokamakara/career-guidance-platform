@@ -1,6 +1,7 @@
 .form-group {
   margin-bottom: 20px;
   text-align: left;
+  animation: fadeIn 0.3s ease;
 }
 
 .form-label {
@@ -8,6 +9,7 @@
   margin-bottom: 6px;
   font-weight: 500;
   color: #333;
+  font-size: 14px;
 }
 
 .required {
@@ -15,14 +17,17 @@
   margin-left: 4px;
 }
 
+/* === Base field styling === */
 .form-field {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #e1e5e9;
   border-radius: 8px;
   font-size: 16px;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   background: white;
+  font-family: inherit;
+  color: #212529;
 }
 
 .form-field:focus {
@@ -33,6 +38,7 @@
 
 .form-field.error {
   border-color: #dc3545;
+  background-color: #fff5f5;
 }
 
 .form-field.error:focus {
@@ -44,33 +50,99 @@
   background: #f8f9fa;
   color: #6c757d;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
+/* === Name field custom pattern === */
+.form-field.name-field:invalid {
+  border-color: #ffc107;
+  background-color: #fffcf5;
+}
+
+/* === Textarea styling === */
+textarea.form-field {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
+}
+
+/* === Select dropdown styling === */
+select.form-field {
+  appearance: none;
+  background: url("data:image/svg+xml;utf8,<svg fill='%23667eea' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") 
+              no-repeat right 16px center/16px auto;
+  cursor: pointer;
+  padding-right: 40px;
+}
+
+/* === Checkbox styling === */
 .form-checkbox {
   width: auto;
   margin-right: 8px;
+  transform: scale(1.2);
+  accent-color: #667eea;
+  vertical-align: middle;
 }
 
+/* === Error message styling === */
 .error-message {
   color: #dc3545;
   font-size: 0.8rem;
   margin-top: 6px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-/* Textarea specific styles */
-textarea.form-field {
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
+.error-message::before {
+  content: "⚠";
+  font-size: 0.9rem;
 }
 
-/* Select specific styles */
-select.form-field {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23333' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 12px;
-  padding-right: 40px;
+/* === Character counter === */
+.char-counter {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.char-counter.warning {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+/* === Placeholder fade === */
+.form-field::placeholder {
+  color: #adb5bd;
+  transition: color 0.3s ease;
+}
+
+.form-field:focus::placeholder {
+  color: transparent;
+}
+
+/* === Small screen adjustments === */
+@media (max-width: 480px) {
+  .form-field {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .form-label {
+    font-size: 13px;
+  }
+}
+
+/* === Animation === */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

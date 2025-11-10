@@ -1,10 +1,40 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './HomePage.css';
 
 const HomePage = () => {
-  const { isAuthenticated, userProfile } = useAuth();
+  const { isAuthenticated, userProfile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Don't show anything while loading
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  const handleDashboardNavigation = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    switch (userProfile?.role) {
+      case 'student':
+        navigate('/student/dashboard');
+        break;
+      case 'institute':
+        navigate('/institute/dashboard');
+        break;
+      case 'company':
+        navigate('/company/dashboard');
+        break;
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      default:
+        navigate('/login');
+    }
+  };
 
   return (
     <div className="homepage">
@@ -26,14 +56,12 @@ const HomePage = () => {
                 </Link>
               </>
             ) : (
-              <Link 
-                to={userProfile?.role === 'student' ? '/student/dashboard' : 
-                    userProfile?.role === 'institute' ? '/institute/dashboard' : 
-                    userProfile?.role === 'company' ? '/company/dashboard' : '/admin/dashboard'} 
+              <button 
+                onClick={handleDashboardNavigation}
                 className="btn-primary large"
               >
                 Go to Dashboard
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -44,7 +72,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Rest of your HomePage content remains the same */}
       <section className="features-section">
         <div className="container">
           <h2>How It Works</h2>

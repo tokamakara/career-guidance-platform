@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { validators, validateForm } from '../../utils/validators';
 import './FormField.css';
 
 const FormField = ({
@@ -16,49 +17,133 @@ const FormField = ({
   rows, // For textarea
   disabled = false,
   className = '',
+  validationRules = [], // New: validation rules array
+  immediateValidation = false, // New: validate on change
   ...props
 }) => {
-  const handleChange = (e) => {
-    const value = type === 'checkbox' ? e.target.checked : e.target.value;
-    onChange(name, value);
+  const [localError, setLocalError] = useState('');
+  const [isTouched, setIsTouched] = useState(false);
+
+  // Helper function to validate input
+  const validateInput = (value, rules) => {
+    if (!rules || rules.length === 0) return '';
+    
+    for (const rule of rules) {
+      const error = rule(value);
+      if (error) return error;
+    }
+    return '';
   };
 
-  const handleBlur = () => {
+  // Validate input when value changes (if immediateValidation is true)
+  useEffect(() => {
+    if (immediateValidation && validationRules.length > 0 && value) {
+      const validationError = validateInput(value, validationRules);
+      setLocalError(validationError || '');
+    }
+  }, [value, validationRules, immediateValidation]);
+
+  const handleChange = (e) => {
+    const newValue = type === 'checkbox' ? e.target.checked : e.target.value;
+    
+    // Real-time validation for certain field types
+    if (immediateValidation && validationRules.length > 0) {
+      const validationError = validateInput(newValue, validationRules);
+      setLocalError(validationError || '');
+    }
+    
+    onChange(name, newValue);
+  };
+
+  const handleBlur = (e) => {
+    setIsTouched(true);
+    
+    // Validate on blur
+    if (validationRules.length > 0) {
+      const validationError = validateInput(value, validationRules);
+      setLocalError(validationError || '');
+    }
+    
     onBlur(name);
   };
 
-  const showError = touched && error;
+  const handleFocus = () => {
+    setIsTouched(true);
+  };
+
+  const showError = (touched || isTouched) && (error || localError);
+  const displayError = error || localError;
+
+  // Input pattern restrictions based on field type
+  const getInputProps = () => {
+    const baseProps = {
+      id: name,
+      name: name,
+      value: value,
+      onChange: handleChange,
+      onBlur: handleBlur,
+      onFocus: handleFocus,
+      placeholder: placeholder,
+      disabled: disabled,
+      className: `form-field ${showError ? 'error' : ''}`,
+      ...props
+    };
+
+    // Add pattern restrictions for specific field types
+    switch (type) {
+      case 'name':
+      case 'firstName':
+      case 'lastName':
+        return {
+          ...baseProps,
+          type: 'text',
+          pattern: "[A-Za-zÀ-ÿ'\\-\\s]+",
+          title: "Only letters, spaces, hyphens, and apostrophes allowed",
+          className: `form-field name-field ${showError ? 'error' : ''}`
+        };
+      
+      case 'email':
+        return {
+          ...baseProps,
+          type: 'email',
+          autoComplete: 'email'
+        };
+      
+      case 'phone':
+        return {
+          ...baseProps,
+          type: 'tel',
+          pattern: "[\\+\\d\\s\\-\\(\\)]+",
+          title: "Please enter a valid phone number"
+        };
+      
+      case 'number':
+        return {
+          ...baseProps,
+          type: 'number',
+          step: 'any'
+        };
+      
+      default:
+        return baseProps;
+    }
+  };
 
   const renderField = () => {
+    const inputProps = getInputProps();
+
     switch (type) {
       case 'textarea':
         return (
           <textarea
-            id={name}
-            name={name}
-            value={value}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            placeholder={placeholder}
+            {...inputProps}
             rows={rows || 4}
-            disabled={disabled}
-            className={`form-field ${showError ? 'error' : ''}`}
-            {...props}
           />
         );
 
       case 'select':
         return (
-          <select
-            id={name}
-            name={name}
-            value={value}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            disabled={disabled}
-            className={`form-field ${showError ? 'error' : ''}`}
-            {...props}
-          >
+          <select {...inputProps}>
             <option value="">Select {label}</option>
             {options.map(option => (
               <option key={option.value} value={option.value}>
@@ -72,30 +157,16 @@ const FormField = ({
         return (
           <input
             type="checkbox"
-            id={name}
-            name={name}
-            checked={value}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            disabled={disabled}
+            {...inputProps}
             className="form-checkbox"
-            {...props}
           />
         );
 
       default:
         return (
           <input
-            type={type}
-            id={name}
-            name={name}
-            value={value}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={`form-field ${showError ? 'error' : ''}`}
-            {...props}
+            type={type === 'name' ? 'text' : type}
+            {...inputProps}
           />
         );
     }
@@ -112,8 +183,17 @@ const FormField = ({
       
       {renderField()}
       
-      {showError && (
-        <div className="error-message">{error}</div>
+      {showError && displayError && (
+        <div className="error-message">
+          {displayError}
+        </div>
+      )}
+      
+      {/* Character counter for text fields */}
+      {(type === 'textarea' || type === 'text') && value && (
+        <div className={`char-counter ${value.length > (props.maxLength || 1000) * 0.9 ? 'warning' : ''}`}>
+          {value.length} / {props.maxLength || '∞'}
+        </div>
       )}
     </div>
   );

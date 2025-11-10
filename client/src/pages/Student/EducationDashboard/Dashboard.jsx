@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { applicationService } from '../../../services/api/applicationService';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
+import ModeSwitcher from '../../../components/common/ModeSwitcher';
 import './EducationDashboard.css';
 
 const EducationDashboard = () => {
@@ -69,6 +70,8 @@ const EducationDashboard = () => {
 
   return (
     <div className="education-dashboard">
+      <ModeSwitcher />
+      
       <div className="dashboard-header">
         <h1>Education Dashboard</h1>
         <p>Welcome back, {userProfile?.firstName}! Manage your institution applications and track admissions</p>

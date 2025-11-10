@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMode } from '../../../context/ModeContext';
-import { useAuth } from '../../../context/AuthContext';
+import { useMode } from '../../context/ModeContext'; // FIXED: ../../context not ../../../context
+import { useAuth } from '../../context/AuthContext'; // FIXED: ../../context not ../../../context
 import './ModeSwitcher.css';
 
 const ModeSwitcher = () => {
