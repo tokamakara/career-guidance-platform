@@ -9,4 +9,7 @@ router.get('/profile', authenticateToken, requireRole(['company']), companyContr
 router.put('/profile', authenticateToken, requireRole(['company']), companyController.updateCompanyProfile);
 router.get('/jobs', authenticateToken, requireRole(['company']), companyController.getCompanyJobs);
 
+// PDF Export
+router.get('/export/admitted/:jobId?', authenticateToken, requireRole(['company']), companyController.exportAdmittedCandidates);
+
 module.exports = router;

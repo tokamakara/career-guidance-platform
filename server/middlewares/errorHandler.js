@@ -1,5 +1,16 @@
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  // Log error with context
+  logger.logError(err, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+    userId: req.user?.uid,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
 
   // Firebase Auth errors
   if (err.code && err.code.startsWith('auth/')) {

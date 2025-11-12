@@ -283,10 +283,23 @@ export const validationSchemas = {
   register: {
     firstName: [validators.firstName],
     lastName: [validators.lastName],
-    email: [validators.required, validators.email],
+    email: [
+      (value) => {
+        if (!value || value.toString().trim() === '') {
+          return 'Email is required';
+        }
+        return null;
+      },
+      validators.email
+    ],
     password: [validators.required, validators.password],
     confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
-    role: [validators.required]
+    role: [(value) => {
+      if (!value || value.toString().trim() === '') {
+        return 'Role is required';
+      }
+      return null;
+    }]
   },
 
   studentRegister: {

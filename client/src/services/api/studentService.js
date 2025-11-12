@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-api-eajo.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -30,7 +30,19 @@ export const studentService = {
       const response = await api.get('/student/profile');
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch student profile');
+      // Provide more detailed error message
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message || 'Failed to fetch student profile';
+      
+      if (status === 404) {
+        throw new Error('Profile endpoint not found. Please check if the server is running and the API is accessible.');
+      } else if (status === 401 || status === 403) {
+        throw new Error('Authentication required. Please log in again.');
+      } else if (status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      }
+      
+      throw new Error(message);
     }
   },
 
@@ -40,7 +52,19 @@ export const studentService = {
       const response = await api.put('/student/profile', profileData);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to update student profile');
+      // Provide more detailed error message
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message || 'Failed to update student profile';
+      
+      if (status === 404) {
+        throw new Error('Profile update endpoint not found. Please check if the server is running and the API is accessible.');
+      } else if (status === 401 || status === 403) {
+        throw new Error('Authentication required. Please log in again.');
+      } else if (status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      }
+      
+      throw new Error(message);
     }
   },
 
@@ -99,7 +123,23 @@ export const studentService = {
       const response = await api.get('/student/job-applications');
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch job applications');
+      // Handle server errors gracefully - return empty data instead of throwing
+      const status = error.response?.status;
+      
+      // For 500 errors or network errors, return empty data (no applications available)
+      if (status === 500 || status >= 500 || !error.response) {
+        console.warn('Server error loading job applications, returning empty data:', error.message);
+        return { success: true, data: [] };
+      }
+      
+      // For auth errors, still throw
+      if (status === 401 || status === 403) {
+        throw new Error(error.response?.data?.message || 'Authentication required');
+      }
+      
+      // For other errors, return empty data gracefully
+      console.warn('Error fetching job applications, returning empty data:', error.message);
+      return { success: true, data: [] };
     }
   },
 

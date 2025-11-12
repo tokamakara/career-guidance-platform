@@ -1,5 +1,6 @@
 .notification-bell {
   position: relative;
+  z-index: 10002;
 }
 
 .bell-button {
@@ -38,7 +39,7 @@
 
 .notification-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 10px);
   right: 0;
   background: white;
   border-radius: 12px;
@@ -46,7 +47,7 @@
   width: 350px;
   max-height: 400px;
   overflow: hidden;
-  z-index: 1000;
+  z-index: 10003;
 }
 
 .notification-header {
@@ -66,7 +67,7 @@
 .mark-all-read {
   background: none;
   border: none;
-  color: #667eea;
+  color: #dc3545;
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 500;
@@ -145,7 +146,7 @@
 .view-all {
   background: none;
   border: none;
-  color: #667eea;
+  color: #dc3545;
   cursor: pointer;
   font-weight: 500;
 }

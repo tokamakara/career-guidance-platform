@@ -20,14 +20,37 @@ const MyApplications = () => {
       const result = await applicationService.getStudentApplications(
         filter === 'all' ? null : filter
       );
-      setApplications(result.data);
+      
+      // Handle different response formats
+      let applicationsData = [];
+      if (result && result.success && result.data) {
+        applicationsData = Array.isArray(result.data) ? result.data : [];
+      } else if (result && Array.isArray(result)) {
+        applicationsData = result;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        applicationsData = result.data;
+      } else {
+        applicationsData = [];
+      }
+      
+      setApplications(applicationsData);
     } catch (error) {
-      console.error('Error fetching applications:', error);
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load applications'
-      });
+      // Only log if it's an actual error (not empty data scenario)
+      if (error.message && !error.message.includes('returning empty')) {
+        console.warn('Error fetching applications:', error.message);
+      }
+      
+      // Set empty array - no applications is a valid state, not an error
+      setApplications([]);
+      
+      // Only show notification for auth errors
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled elsewhere
+        return;
+      }
+      
+      // Don't show error notifications for empty data - it's normal if user has no applications
     } finally {
       setLoading(false);
     }
@@ -124,7 +147,6 @@ const MyApplications = () => {
       <div className="applications-list">
         {applications.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📝</div>
             <h3>No applications found</h3>
             <p>You haven't submitted any course applications yet.</p>
             <a href="/student/education/apply" className="btn-primary">

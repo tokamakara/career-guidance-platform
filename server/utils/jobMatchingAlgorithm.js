@@ -26,7 +26,7 @@ class JobMatchingAlgorithm {
       return {
         score: Math.round(totalScore * 100),
         breakdown: scores,
-        qualified: totalScore >= 0.6 // 60% threshold
+        qualified: totalScore >= 0.55 // 55% threshold (two-tier system)
       };
     } catch (error) {
       console.error('Job matching error:', error);
@@ -115,12 +115,12 @@ class JobMatchingAlgorithm {
   }
 
   // Filter and rank candidates for a job
-  async getQualifiedCandidates(jobId, candidates, minScore = 60) {
+  async getQualifiedCandidates(jobRequirements, candidates, minScore = 60) {
     try {
       const qualifiedCandidates = [];
 
       for (const candidate of candidates) {
-        const matchResult = await this.calculateMatchScore(candidate, jobId);
+        const matchResult = await this.calculateMatchScore(candidate, jobRequirements);
         
         if (matchResult.qualified && matchResult.score >= minScore) {
           qualifiedCandidates.push({

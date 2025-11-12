@@ -5,6 +5,9 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const { errorHandler } = require('./middlewares/errorHandler');
+const { apiLimiter } = require('./middlewares/rateLimiter');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -32,6 +35,15 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Apply rate limiting to all API routes
+app.use('/api', apiLimiter);
+
+// API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Career Guidance Platform API Documentation'
+}));
 
 // Routes
 app.use('/api/auth', authRoutes);

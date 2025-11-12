@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
-import { studentService } from '../../../services/api/studentService';
+import { useAuth } from '../../../context/AuthContext';
+import { applicationService } from '../../../services/api/applicationService';
+import { useNotification } from '../../../context/NotificationContext';
+import './AdmissionResults.css';
 
 const AdmissionResults = () => {
-  const [admissions, setAdmissions] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedAdmission, setSelectedAdmission] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     loadAdmissionResults();
@@ -17,82 +20,91 @@ const AdmissionResults = () => {
   const loadAdmissionResults = async () => {
     try {
       setLoading(true);
-      // This would typically come from the student service
-      const mockAdmissions = [
-        {
-          id: '1',
-          institutionName: 'National University of Lesotho',
-          courseName: 'Computer Science',
-          appliedDate: '2024-01-15',
-          decisionDate: '2024-02-01',
-          status: 'admitted',
-          decision: 'Congratulations! You have been admitted to the Computer Science program.',
-          conditions: 'Submit original certificates by March 15, 2024',
-          waitlistPosition: null
-        },
-        {
-          id: '2',
-          institutionName: 'Limkokwing University',
-          courseName: 'Software Engineering',
-          appliedDate: '2024-01-20',
-          decisionDate: '2024-02-05',
-          status: 'waitlisted',
-          decision: 'You have been placed on the waitlist for the Software Engineering program.',
-          conditions: 'We will notify you if a spot becomes available',
-          waitlistPosition: 5
-        },
-        {
-          id: '3',
-          institutionName: 'Lesotho College of Education',
-          courseName: 'Education',
-          appliedDate: '2024-01-10',
-          decisionDate: '2024-01-30',
-          status: 'rejected',
-          decision: 'We regret to inform you that your application was not successful.',
-          conditions: 'You may consider applying for other programs or improving your qualifications',
-          waitlistPosition: null
-        }
-      ];
-      setAdmissions(mockAdmissions);
+      setError('');
+      
+      // Fetch real applications from API
+      const result = await applicationService.getStudentApplications();
+      
+      // Handle different response formats
+      let applications = [];
+      
+      if (result && result.success && result.data) {
+        // Standard API response: { success: true, data: [...] }
+        applications = Array.isArray(result.data) ? result.data : [];
+      } else if (result && Array.isArray(result)) {
+        // Direct array response
+        applications = result;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        // Response with data property
+        applications = result.data;
+      } else {
+        // Empty or unexpected format
+        applications = [];
+        console.warn('Unexpected response format for admission results:', result);
+      }
+      
+      // Filter applications that have decisions (admitted, rejected, waiting, accepted)
+      // Also include pending/under-review for stats, but they won't show as "decisions"
+      const applicationsWithDecisions = applications.filter(app => 
+        app.status === 'admitted' || 
+        app.status === 'rejected' || 
+        app.status === 'waiting' ||
+        app.status === 'accepted' ||
+        app.status === 'pending' ||
+        app.status === 'under-review'
+      );
+      
+      setApplications(applicationsWithDecisions);
+      
+      // Clear any previous errors on successful load
+      setError('');
+      
     } catch (err) {
-      setError(err.message || 'Failed to load admission results');
+      // Only log if it's an actual error (not empty data scenario)
+      if (err.message && !err.message.includes('returning empty')) {
+        console.warn('Error loading admission results:', err.message);
+      }
+      
+      // Set empty array - no admission results is a valid state, not an error
+      setApplications([]);
+      setError(''); // Clear error - empty data is normal
+      
+      // Only show notification for auth errors
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled elsewhere
+        return;
+      }
+      
+      // Don't show error notifications for empty data - it's normal if user has no applications
     } finally {
       setLoading(false);
     }
   };
 
-  const acceptAdmission = async (admissionId) => {
-    if (!window.confirm('Are you sure you want to accept this admission offer? This action cannot be undone.')) {
+  const acceptAdmission = async (applicationId) => {
+    if (!window.confirm('Are you sure you want to accept this admission offer? This will automatically decline all other offers.')) {
       return;
     }
 
     try {
-      // Simulate API call
-      setAdmissions(prev => prev.map(admission => 
-        admission.id === admissionId 
-          ? { ...admission, status: 'accepted' }
-          : admission.status === 'admitted' ? { ...admission, status: 'declined' } : admission
-      ));
-      alert('Admission accepted successfully!');
+      await applicationService.acceptAdmission(applicationId);
+      addNotification({
+        type: 'success',
+        title: 'Admission Accepted',
+        message: 'You have successfully accepted the admission offer'
+      });
+      
+      // Reload applications to reflect the change
+      loadAdmissionResults();
     } catch (err) {
-      setError('Failed to accept admission');
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'admitted':
-        return '🎉';
-      case 'accepted':
-        return '✅';
-      case 'waitlisted':
-        return '⏳';
-      case 'rejected':
-        return '❌';
-      case 'pending':
-        return '📝';
-      default:
-        return '📋';
+      console.error('Error accepting admission:', err);
+      setError(err.message || 'Failed to accept admission');
+      addNotification({
+        type: 'error',
+        title: 'Acceptance Failed',
+        message: err.message || 'Failed to accept admission offer'
+      });
     }
   };
 
@@ -101,23 +113,47 @@ const AdmissionResults = () => {
       case 'admitted':
       case 'accepted':
         return 'success';
-      case 'waitlisted':
+      case 'waiting':
         return 'warning';
       case 'rejected':
         return 'error';
       case 'pending':
+      case 'under-review':
         return 'info';
       default:
         return 'default';
     }
   };
 
+  const getStatusLabel = (status) => {
+    const statusLabels = {
+      'admitted': 'ADMITTED',
+      'accepted': 'ACCEPTED',
+      'waiting': 'WAITLISTED',
+      'rejected': 'REJECTED',
+      'pending': 'PENDING',
+      'under-review': 'UNDER REVIEW'
+    };
+    return statusLabels[status] || status.toUpperCase();
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    // Handle Firestore Timestamp
+    const dateObj = date?.toDate ? date.toDate() : new Date(date);
+    return dateObj.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    });
+  };
+
   const getAdmissionStats = () => {
-    const total = admissions.length;
-    const admitted = admissions.filter(a => a.status === 'admitted' || a.status === 'accepted').length;
-    const waitlisted = admissions.filter(a => a.status === 'waitlisted').length;
-    const rejected = admissions.filter(a => a.status === 'rejected').length;
-    const pending = admissions.filter(a => a.status === 'pending').length;
+    const total = applications.length;
+    const admitted = applications.filter(a => a.status === 'admitted' || a.status === 'accepted').length;
+    const waitlisted = applications.filter(a => a.status === 'waiting').length;
+    const rejected = applications.filter(a => a.status === 'rejected').length;
+    const pending = applications.filter(a => a.status === 'pending' || a.status === 'under-review').length;
     
     return { total, admitted, waitlisted, rejected, pending };
   };
@@ -140,7 +176,11 @@ const AdmissionResults = () => {
         <p>View your admission decisions and manage your acceptances</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message">
+          {error === 'Internal server error' ? 'Unable to load admission results. Please try again later.' : error}
+        </div>
+      )}
 
       {/* Statistics */}
       <div className="admission-stats">
@@ -164,78 +204,101 @@ const AdmissionResults = () => {
 
       {/* Admission Results List */}
       <div className="admission-list">
-        {admissions.length === 0 ? (
+        {applications.length === 0 ? (
           <div className="empty-results">
-            <div className="empty-icon">📋</div>
             <h3>No Admission Results Yet</h3>
             <p>Your admission decisions will appear here once they are available.</p>
           </div>
         ) : (
-          admissions.map(admission => (
-            <div 
-              key={admission.id} 
-              className={`admission-card status-${getStatusColor(admission.status)}`}
-            >
-              <div className="admission-header">
-                <div className="status-indicator">
-                  <span className="status-icon">{getStatusIcon(admission.status)}</span>
-                  <span className="status-text">{admission.status.toUpperCase()}</span>
-                </div>
-                <div className="admission-date">
-                  Decided: {new Date(admission.decisionDate).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div className="admission-body">
-                <h3 className="course-name">{admission.courseName}</h3>
-                <p className="institution-name">{admission.institutionName}</p>
-                
-                <div className="decision-message">
-                  <p>{admission.decision}</p>
-                </div>
-
-                {admission.waitlistPosition && (
-                  <div className="waitlist-info">
-                    <strong>Waitlist Position:</strong> #{admission.waitlistPosition}
+          applications.map(application => {
+            const decisionDate = application.admissionDecision?.decisionDate || 
+                                 application.updatedAt || 
+                                 application.applicationDate;
+            
+            return (
+              <div 
+                key={application.id} 
+                className={`admission-card status-${getStatusColor(application.status)}`}
+              >
+                <div className="admission-header">
+                  <div className="status-indicator">
+                    <span className="status-text">{getStatusLabel(application.status)}</span>
                   </div>
-                )}
-
-                {admission.conditions && (
-                  <div className="conditions-info">
-                    <strong>Conditions:</strong> {admission.conditions}
-                  </div>
-                )}
-              </div>
-
-              <div className="admission-footer">
-                <div className="applied-date">
-                  Applied: {new Date(admission.appliedDate).toLocaleDateString()}
-                </div>
-                
-                <div className="admission-actions">
-                  {admission.status === 'admitted' && (
-                    <button 
-                      onClick={() => acceptAdmission(admission.id)}
-                      className="accept-btn"
-                    >
-                      Accept Offer
-                    </button>
+                  {decisionDate && (
+                    <div className="admission-date">
+                      Decided: {formatDate(decisionDate)}
+                    </div>
                   )}
+                </div>
+
+                <div className="admission-body">
+                  <h3 className="course-name">{application.courseName}</h3>
+                  <p className="institution-name">{application.institutionName}</p>
                   
-                  {admission.status === 'accepted' && (
-                    <span className="accepted-badge">Offer Accepted</span>
+                  {application.admissionDecision && (
+                    <div className="decision-message">
+                      <p>
+                        {application.status === 'admitted' && 
+                          `Congratulations! You have been admitted to the ${application.courseName} program.`}
+                        {application.status === 'waiting' && 
+                          `You have been placed on the waitlist for the ${application.courseName} program.`}
+                        {application.status === 'rejected' && 
+                          `We regret to inform you that your application was not successful.`}
+                        {application.status === 'accepted' && 
+                          `You have accepted the admission offer for ${application.courseName}.`}
+                      </p>
+                    </div>
                   )}
 
-                  <button 
-                    onClick={() => setSelectedAdmission(admission)}
-                    className="details-btn"
-                  >
-                    View Details
-                  </button>
+                  {application.waitlistPosition && (
+                    <div className="waitlist-info">
+                      <strong>Waitlist Position:</strong> #{application.waitlistPosition}
+                    </div>
+                  )}
+
+                  {application.admissionDecision?.notes && (
+                    <div className="conditions-info">
+                      <strong>Notes:</strong> {application.admissionDecision.notes}
+                    </div>
+                  )}
+
+                  {application.notes && (
+                    <div className="conditions-info">
+                      <strong>Additional Information:</strong> {application.notes}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admission-footer">
+                  <div className="applied-date">
+                    Applied: {formatDate(application.applicationDate)}
+                  </div>
+                  
+                  <div className="admission-actions">
+                    {application.status === 'admitted' && (
+                      <button 
+                        onClick={() => acceptAdmission(application.id)}
+                        className="accept-btn"
+                      >
+                        Accept Offer
+                      </button>
+                    )}
+                    
+                    {application.status === 'accepted' && (
+                      <span className="accepted-badge">Offer Accepted</span>
+                    )}
+
+                    <button 
+                      onClick={() => setSelectedApplication(application)}
+                      className="details-btn"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -267,14 +330,15 @@ const AdmissionResults = () => {
       </div>
 
       {/* Admission Details Modal */}
-      {selectedAdmission && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+      {selectedApplication && (
+        <div className="modal-overlay" onClick={() => setSelectedApplication(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Admission Details</h2>
               <button 
-                onClick={() => setSelectedAdmission(null)}
+                onClick={() => setSelectedApplication(null)}
                 className="close-button"
+                aria-label="Close"
               >
                 ×
               </button>
@@ -282,8 +346,8 @@ const AdmissionResults = () => {
             
             <div className="modal-body">
               <div className="detail-section">
-                <h3>{selectedAdmission.courseName}</h3>
-                <p className="institution">{selectedAdmission.institutionName}</p>
+                <h3>{selectedApplication.courseName}</h3>
+                <p className="institution">{selectedApplication.institutionName}</p>
               </div>
 
               <div className="detail-section">
@@ -291,44 +355,55 @@ const AdmissionResults = () => {
                 <div className="timeline">
                   <div className="timeline-item">
                     <span className="timeline-date">
-                      {new Date(selectedAdmission.appliedDate).toLocaleDateString()}
+                      {formatDate(selectedApplication.applicationDate)}
                     </span>
                     <span className="timeline-event">Application Submitted</span>
                   </div>
-                  <div className="timeline-item">
-                    <span className="timeline-date">
-                      {new Date(selectedAdmission.decisionDate).toLocaleDateString()}
-                    </span>
-                    <span className="timeline-event">Decision Made</span>
-                  </div>
+                  {selectedApplication.admissionDecision?.decisionDate && (
+                    <div className="timeline-item">
+                      <span className="timeline-date">
+                        {formatDate(selectedApplication.admissionDecision.decisionDate)}
+                      </span>
+                      <span className="timeline-event">Decision Made</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="detail-section">
                 <h4>Decision Details</h4>
-                <p>{selectedAdmission.decision}</p>
+                <p>
+                  {selectedApplication.status === 'admitted' && 
+                    `Congratulations! You have been admitted to the ${selectedApplication.courseName} program.`}
+                  {selectedApplication.status === 'waiting' && 
+                    `You have been placed on the waitlist for the ${selectedApplication.courseName} program.`}
+                  {selectedApplication.status === 'rejected' && 
+                    `We regret to inform you that your application was not successful.`}
+                  {selectedApplication.status === 'accepted' && 
+                    `You have accepted the admission offer for ${selectedApplication.courseName}.`}
+                </p>
                 
-                {selectedAdmission.conditions && (
+                {selectedApplication.admissionDecision?.notes && (
                   <div className="conditions">
-                    <h5>Conditions:</h5>
-                    <p>{selectedAdmission.conditions}</p>
+                    <h5>Notes:</h5>
+                    <p>{selectedApplication.admissionDecision.notes}</p>
                   </div>
                 )}
 
-                {selectedAdmission.waitlistPosition && (
+                {selectedApplication.waitlistPosition && (
                   <div className="waitlist-info">
                     <h5>Waitlist Information:</h5>
-                    <p>Your position on the waitlist: #{selectedAdmission.waitlistPosition}</p>
+                    <p>Your position on the waitlist: #{selectedApplication.waitlistPosition}</p>
                   </div>
                 )}
               </div>
 
-              {selectedAdmission.status === 'admitted' && (
+              {selectedApplication.status === 'admitted' && (
                 <div className="action-section">
                   <button 
                     onClick={() => {
-                      acceptAdmission(selectedAdmission.id);
-                      setSelectedAdmission(null);
+                      acceptAdmission(selectedApplication.id);
+                      setSelectedApplication(null);
                     }}
                     className="accept-btn large"
                   >

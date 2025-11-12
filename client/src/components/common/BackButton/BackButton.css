@@ -1,0 +1,41 @@
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.back-button:hover {
+  color: #007bff;
+  background: #f8f9fa;
+}
+
+.back-button svg {
+  transition: transform 0.2s ease;
+  width: 14px;
+  height: 14px;
+}
+
+.back-button:hover svg {
+  transform: translateX(-2px);
+}
+
+.back-button:focus {
+  outline: none;
+  color: #007bff;
+  background: #f8f9fa;
+}
+
+.back-button:active {
+  transform: scale(0.98);
+}
+

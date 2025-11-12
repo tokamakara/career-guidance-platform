@@ -4,7 +4,6 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../services/firebase';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
-import ModeSwitcher from '../../../components/common/ModeSwitcher';
 import './CareerDashboard.css';
 
 const CareerDashboard = () => {
@@ -27,53 +26,44 @@ const CareerDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Mock data - replace with actual Firestore queries
+      // Remove mock data; use empty defaults until real data is wired
       setStats({
-        jobApplications: 2,
-        interviews: 1,
-        documents: 3,
-        matchingJobs: 12
+        jobApplications: 0,
+        interviews: 0,
+        documents: 0,
+        matchingJobs: 0
       });
 
-      setRecentJobs([
-        {
-          id: 1,
-          title: 'Junior Software Developer',
-          company: 'Vodacom Lesotho',
-          location: 'Maseru',
-          type: 'Full-time',
-          postedDate: new Date('2024-01-20'),
-          matchScore: 85
-        },
-        {
-          id: 2,
-          title: 'IT Support Specialist',
-          company: 'Econet Telecom',
-          location: 'Maseru',
-          type: 'Full-time',
-          postedDate: new Date('2024-01-18'),
-          matchScore: 72
-        },
-        {
-          id: 3,
-          title: 'Data Analyst Intern',
-          company: 'Central Bank of Lesotho',
-          location: 'Maseru',
-          type: 'Internship',
-          postedDate: new Date('2024-01-15'),
-          matchScore: 90
-        }
-      ]);
+      // No hardcoded jobs
+      setRecentJobs([]);
 
-      setProfileCompletion(65);
+      // Basic completion default to 0 until computed from profile
+      setProfileCompletion(0);
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load dashboard data'
+      // Only log if it's an actual error (not empty data scenario)
+      if (error.message && !error.message.includes('returning empty')) {
+        console.warn('Error fetching dashboard data:', error.message);
+      }
+      
+      // Set default stats (empty data is normal, not an error)
+      setStats({
+        jobApplications: 0,
+        interviews: 0,
+        documents: 0,
+        matchingJobs: 0
       });
+      setRecentJobs([]);
+      setProfileCompletion(0);
+      
+      // Only show notification for auth errors
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled by auth context, don't show notification here
+        return;
+      }
+      
+      // Don't show notifications for empty data - it's normal if user has no job data
     } finally {
       setLoading(false);
     }
@@ -86,7 +76,7 @@ const CareerDashboard = () => {
   };
 
   const calculateProfileCompletion = () => {
-    // This would calculate based on actual profile data
+    // Keep current simple value; can be replaced with real calculation
     return profileCompletion;
   };
 
@@ -96,7 +86,6 @@ const CareerDashboard = () => {
 
   return (
     <div className="career-dashboard">
-      <ModeSwitcher />
       
       <div className="dashboard-header">
         <h1>Career Dashboard</h1>
@@ -126,7 +115,7 @@ const CareerDashboard = () => {
       {/* Quick Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">📄</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.jobApplications}</h3>
             <p>Job Applications</p>
@@ -134,7 +123,7 @@ const CareerDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">🎯</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.interviews}</h3>
             <p>Interviews</p>
@@ -142,7 +131,7 @@ const CareerDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">📁</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.documents}</h3>
             <p>Documents</p>
@@ -150,7 +139,7 @@ const CareerDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">💼</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.matchingJobs}</h3>
             <p>Matching Jobs</p>
@@ -163,60 +152,51 @@ const CareerDashboard = () => {
         <h2>Quick Actions</h2>
         <div className="actions-grid">
           <Link to="/student/career/jobs" className="action-card">
-            <div className="action-icon">🔍</div>
+            <div className="action-icon" />
             <h4>Browse Jobs</h4>
             <p>Discover job opportunities matching your profile</p>
           </Link>
 
           <Link to="/student/career/applications" className="action-card">
-            <div className="action-icon">📋</div>
+            <div className="action-icon" />
             <h4>My Applications</h4>
             <p>Track your job applications and status</p>
           </Link>
 
           <Link to="/student/career/documents" className="action-card">
-            <div className="action-icon">📁</div>
+            <div className="action-icon" />
             <h4>My Documents</h4>
             <p>Upload and manage your career documents</p>
           </Link>
 
           <Link to="/student/profile" className="action-card">
-            <div className="action-icon">👤</div>
+            <div className="action-icon" />
             <h4>My Profile</h4>
             <p>Update your skills and preferences</p>
           </Link>
         </div>
       </div>
 
-      {/* Recommended Jobs */}
-      <div className="recommended-jobs">
-        <div className="section-header">
-          <h2>Recommended for You</h2>
-          <Link to="/student/career/jobs" className="view-all-link">
-            View All Jobs
-          </Link>
-        </div>
+      {/* Recommended Jobs (hidden until connected to real data) */}
+      {recentJobs.length > 0 && (
+        <div className="recommended-jobs">
+          <div className="section-header">
+            <h2>Recommended for You</h2>
+            <Link to="/student/career/jobs" className="view-all-link">
+              View All Jobs
+            </Link>
+          </div>
 
-        <div className="jobs-list">
-          {recentJobs.length === 0 ? (
-            <div className="empty-state">
-              <p>No recommended jobs yet. Complete your profile to get better matches!</p>
-              <Link to="/student/profile" className="btn-primary">
-                Complete Profile
-              </Link>
-            </div>
-          ) : (
-            recentJobs.map(job => (
+          <div className="jobs-list">
+            {recentJobs.map(job => (
               <div key={job.id} className="job-card">
                 <div className="job-info">
                   <h4>{job.title}</h4>
                   <p className="company">{job.company}</p>
                   <div className="job-meta">
-                    <span className="location">📍 {job.location}</span>
-                    <span className="type">🕒 {job.type}</span>
-                    <span className="date">
-                      📅 {job.postedDate.toLocaleDateString()}
-                    </span>
+                    <span className="location">{job.location}</span>
+                    <span className="type">{job.type}</span>
+                    <span className="date">{job.postedDate.toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div className="job-actions">
@@ -228,32 +208,32 @@ const CareerDashboard = () => {
                   </Link>
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Career Tips */}
       <div className="career-tips">
         <h3>Career Tips</h3>
         <div className="tips-grid">
           <div className="tip-card">
-            <div className="tip-icon">📝</div>
+            <div className="tip-icon" />
             <h4>Tailor Your Resume</h4>
             <p>Customize your resume for each job application to highlight relevant skills</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">🔍</div>
+            <div className="tip-icon" />
             <h4>Research Companies</h4>
             <p>Learn about companies before interviews to show genuine interest</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">💡</div>
+            <div className="tip-icon" />
             <h4>Network</h4>
             <p>Connect with professionals in your desired industry</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">🎯</div>
+            <div className="tip-icon" />
             <h4>Set Goals</h4>
             <p>Define clear career objectives and work towards them systematically</p>
           </div>

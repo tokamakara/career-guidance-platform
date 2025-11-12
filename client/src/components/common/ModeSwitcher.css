@@ -4,7 +4,8 @@
   border-radius: 12px;
   padding: 4px;
   border: 2px solid #e9ecef;
-  margin: 0 10px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .mode-button {

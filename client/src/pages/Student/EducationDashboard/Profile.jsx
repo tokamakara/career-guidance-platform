@@ -1,45 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../hooks/useAuth';
-import { studentService } from '../../../../services/api/studentService';
-import { HIGH_SCHOOL_SUBJECTS, getGradeOptions } from '../../../../utils/gradeSystem';
+import { useAuth } from '../../../context/AuthContext';
+import { studentService } from '../../../services/api/studentService';
+import './Profile.css';
 
 const EducationProfile = () => {
   const [profile, setProfile] = useState({
-    personalInfo: {
-      fullName: '',
-      dateOfBirth: '',
-      gender: '',
-      phone: '',
-      address: ''
-    },
-    highSchoolGrades: {},
-    documents: []
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    idNumber: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: 'Lesotho',
+    bio: '',
+    emergencyContact: {
+      name: '',
+      relationship: '',
+      phone: ''
+    }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user } = useAuth();
+  const { currentUser, userProfile, updateProfile } = useAuth();
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [currentUser, userProfile]);
 
   const loadProfile = async () => {
     try {
-      const data = await studentService.getStudentProfile(user.uid);
-      setProfile({
-        personalInfo: data.personalInfo || {
-          fullName: '',
-          dateOfBirth: '',
-          gender: '',
-          phone: '',
-          address: ''
-        },
-        highSchoolGrades: data.highSchoolGrades || {},
-        documents: data.documents || []
-      });
+      if (!currentUser?.uid) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+      
+      // Load from userProfile first
+      if (userProfile) {
+        setProfile({
+          firstName: userProfile.firstName || '',
+          lastName: userProfile.lastName || '',
+          email: userProfile.email || currentUser.email || '',
+          phone: userProfile.phone || '',
+          dateOfBirth: userProfile.dateOfBirth || '',
+          gender: userProfile.gender || '',
+          idNumber: userProfile.idNumber || '',
+          address: userProfile.address || '',
+          city: userProfile.city || '',
+          postalCode: userProfile.postalCode || '',
+          country: userProfile.country || 'Lesotho',
+          bio: userProfile.bio || '',
+          emergencyContact: userProfile.emergencyContact || {
+            name: '',
+            relationship: '',
+            phone: ''
+          }
+        });
+      }
+      
+      // Try to get additional data from API
+      try {
+        const result = await studentService.getStudentProfile();
+        if (result && result.success && result.data) {
+          setProfile(prev => ({
+            ...prev,
+            ...result.data,
+            emergencyContact: result.data.emergencyContact || prev.emergencyContact
+          }));
+        }
+      } catch (apiErr) {
+        // If API fails, continue with userProfile data
+        // Only show error if it's not a 404 (which might mean profile doesn't exist yet)
+        if (apiErr.message && !apiErr.message.includes('endpoint not found')) {
+          console.warn('Could not load additional profile data:', apiErr.message);
+        }
+        // Don't set error state - userProfile data is sufficient
+      }
     } catch (err) {
       setError(err.message || 'Failed to load profile');
     } finally {
@@ -47,23 +90,21 @@ const EducationProfile = () => {
     }
   };
 
-  const handlePersonalInfoChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setProfile(prev => ({
       ...prev,
-      personalInfo: {
-        ...prev.personalInfo,
-        [name]: value
-      }
+      [name]: value
     }));
   };
 
-  const handleGradeChange = (subject, grade) => {
+  const handleEmergencyContactChange = (e) => {
+    const { name, value } = e.target;
     setProfile(prev => ({
       ...prev,
-      highSchoolGrades: {
-        ...prev.highSchoolGrades,
-        [subject]: grade
+      emergencyContact: {
+        ...prev.emergencyContact,
+        [name]: value
       }
     }));
   };
@@ -75,62 +116,103 @@ const EducationProfile = () => {
     setSuccess('');
 
     try {
-      await studentService.updateEducationProfile(profile);
+      // Update via AuthContext for local state
+      await updateProfile({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone
+      });
+      
+      // Update via API for backend persistence
+      await studentService.updateStudentProfile(profile);
+      
       setSuccess('Profile updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
+      console.error('Profile update error:', err);
       setError(err.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
   };
 
-  const calculateGPA = () => {
-    const grades = Object.values(profile.highSchoolGrades);
-    if (grades.length === 0) return 0;
-
-    const gradePoints = {
-      'A*': 4.0, 'A': 4.0, 'B': 3.0, 'C': 2.0, 
-      'D': 1.0, 'E': 0.0, 'F': 0.0, 'G': 0.0
-    };
-
-    const totalPoints = grades.reduce((sum, grade) => sum + (gradePoints[grade] || 0), 0);
-    return (totalPoints / grades.length).toFixed(2);
-  };
-
-  const getCompletedSubjects = () => {
-    return Object.keys(profile.highSchoolGrades).length;
-  };
-
-  const gradeOptions = getGradeOptions();
-
   if (loading) {
-    return <div className="loading">Loading profile...</div>;
+    return <div className="profile-loading">Loading profile...</div>;
   }
 
   return (
-    <div className="education-profile">
-      <div className="page-header">
-        <h1>Education Profile</h1>
-        <p>Manage your personal information and academic records</p>
+    <div className="profile-page">
+      <div className="profile-header">
+        <h1>My Profile</h1>
+        <p>Manage your personal information and contact details</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && (
+        <div className="profile-message error-message">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="profile-message success-message">
+          {success}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="profile-form">
-        {/* Personal Information */}
-        <div className="form-section">
-          <h3>Personal Information</h3>
+        {/* Basic Information */}
+        <div className="profile-section">
+          <h2>Basic Information</h2>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="fullName">Full Name *</label>
+              <label htmlFor="firstName">First Name *</label>
               <input
                 type="text"
-                id="fullName"
-                name="fullName"
-                value={profile.personalInfo.fullName}
-                onChange={handlePersonalInfoChange}
+                id="firstName"
+                name="firstName"
+                value={profile.firstName}
+                onChange={handleChange}
                 required
+                placeholder="Enter your first name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="lastName">Last Name *</label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={profile.lastName}
+                onChange={handleChange}
+                required
+                placeholder="Enter your last name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="email">Email Address *</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={profile.email}
+                onChange={handleChange}
+                required
+                placeholder="your.email@example.com"
+                disabled
+              />
+              <small className="field-hint">Email cannot be changed</small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phone">Phone Number</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={profile.phone}
+                onChange={handleChange}
+                placeholder="+266 5XXX XXXX"
               />
             </div>
 
@@ -140,8 +222,8 @@ const EducationProfile = () => {
                 type="date"
                 id="dateOfBirth"
                 name="dateOfBirth"
-                value={profile.personalInfo.dateOfBirth}
-                onChange={handlePersonalInfoChange}
+                value={profile.dateOfBirth}
+                onChange={handleChange}
               />
             </div>
 
@@ -150,8 +232,8 @@ const EducationProfile = () => {
               <select
                 id="gender"
                 name="gender"
-                value={profile.personalInfo.gender}
-                onChange={handlePersonalInfoChange}
+                value={profile.gender}
+                onChange={handleChange}
               >
                 <option value="">Select Gender</option>
                 <option value="male">Male</option>
@@ -162,142 +244,144 @@ const EducationProfile = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Phone Number</label>
+              <label htmlFor="idNumber">ID Number / Passport Number</label>
               <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={profile.personalInfo.phone}
-                onChange={handlePersonalInfoChange}
+                type="text"
+                id="idNumber"
+                name="idNumber"
+                value={profile.idNumber}
+                onChange={handleChange}
+                placeholder="Enter your ID or passport number"
               />
             </div>
+          </div>
+        </div>
 
+        {/* Address Information */}
+        <div className="profile-section">
+          <h2>Address Information</h2>
+          <div className="form-grid">
             <div className="form-group full-width">
-              <label htmlFor="address">Address</label>
+              <label htmlFor="address">Street Address</label>
               <textarea
                 id="address"
                 name="address"
-                value={profile.personalInfo.address}
-                onChange={handlePersonalInfoChange}
+                value={profile.address}
+                onChange={handleChange}
                 rows="3"
-                placeholder="Enter your current address"
+                placeholder="Enter your street address"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="city">City / Town</label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={profile.city}
+                onChange={handleChange}
+                placeholder="Enter your city or town"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="postalCode">Postal Code</label>
+              <input
+                type="text"
+                id="postalCode"
+                name="postalCode"
+                value={profile.postalCode}
+                onChange={handleChange}
+                placeholder="Enter postal code"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="country">Country</label>
+              <select
+                id="country"
+                name="country"
+                value={profile.country}
+                onChange={handleChange}
+              >
+                <option value="Lesotho">Lesotho</option>
+                <option value="South Africa">South Africa</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* High School Grades */}
-        <div className="form-section">
-          <h3>High School Academic Record</h3>
+        {/* Bio */}
+        <div className="profile-section">
+          <h2>About Me</h2>
+          <div className="form-group full-width">
+            <label htmlFor="bio">Bio / Personal Statement</label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={profile.bio}
+              onChange={handleChange}
+              rows="5"
+              placeholder="Tell us about yourself, your interests, career goals, or any other information you'd like to share..."
+              maxLength={500}
+            />
+            <small className="field-hint">
+              {profile.bio.length}/500 characters
+            </small>
+          </div>
+        </div>
+
+        {/* Emergency Contact */}
+        <div className="profile-section">
+          <h2>Emergency Contact</h2>
           <p className="section-description">
-            Enter your O-Level grades for each subject. This information is crucial for 
-            determining which courses you qualify for.
+            Provide contact information for someone we can reach in case of emergency
           </p>
-
-          {/* Grades Summary */}
-          <div className="grades-summary">
-            <div className="summary-card">
-              <div className="summary-value">{getCompletedSubjects()}</div>
-              <div className="summary-label">Subjects Completed</div>
-            </div>
-            <div className="summary-card">
-              <div className="summary-value">{calculateGPA()}</div>
-              <div className="summary-label">Average GPA</div>
-            </div>
-            <div className="summary-card">
-              <div className="summary-value">
-                {Object.values(profile.highSchoolGrades).filter(grade => 
-                  ['A*', 'A', 'B'].includes(grade)
-                ).length}
-              </div>
-              <div className="summary-label">A-C Grades</div>
-            </div>
-          </div>
-
-          {/* Grades Input Grid */}
-          <div className="grades-grid">
-            {HIGH_SCHOOL_SUBJECTS.map(subject => (
-              <div key={subject} className="grade-input-group">
-                <label htmlFor={`grade-${subject}`}>{subject}</label>
-                <select
-                  id={`grade-${subject}`}
-                  value={profile.highSchoolGrades[subject] || ''}
-                  onChange={(e) => handleGradeChange(subject, e.target.value)}
-                >
-                  <option value="">Select Grade</option>
-                  {gradeOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-
-          <div className="grades-legend">
-            <h4>Grading System (Cambridge O-Level)</h4>
-            <div className="legend-items">
-              <div className="legend-item">
-                <span className="grade-example">A*</span>
-                <span>90-100% (Outstanding)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">A</span>
-                <span>80-89% (Excellent)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">B</span>
-                <span>70-79% (Good)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">C</span>
-                <span>60-69% (Satisfactory)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">D</span>
-                <span>50-59% (Pass)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">E</span>
-                <span>40-49% (Marginal)</span>
-              </div>
-              <div className="legend-item">
-                <span className="grade-example">F/G</span>
-                <span>0-39% (Fail)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Documents Section */}
-        <div className="form-section">
-          <h3>Supporting Documents</h3>
-          <p>Upload any supporting documents for your applications (transcripts, certificates, etc.)</p>
-          
-          <div className="documents-upload">
-            <div className="upload-area">
-              <div className="upload-icon">📄</div>
-              <p>Drag and drop files here or click to browse</p>
-              <input 
-                type="file" 
-                multiple 
-                className="file-input"
-                onChange={(e) => {
-                  // Handle file upload
-                  console.log('Files selected:', e.target.files);
-                }}
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="emergencyName">Contact Name *</label>
+              <input
+                type="text"
+                id="emergencyName"
+                name="name"
+                value={profile.emergencyContact.name}
+                onChange={handleEmergencyContactChange}
+                placeholder="Enter contact name"
+                required
               />
             </div>
 
-            <div className="uploaded-files">
-              {profile.documents.map((doc, index) => (
-                <div key={index} className="document-item">
-                  <span className="doc-name">{doc.name}</span>
-                  <span className="doc-size">{doc.size}</span>
-                  <button type="button" className="delete-doc">×</button>
-                </div>
-              ))}
+            <div className="form-group">
+              <label htmlFor="emergencyRelationship">Relationship</label>
+              <select
+                id="emergencyRelationship"
+                name="relationship"
+                value={profile.emergencyContact.relationship}
+                onChange={handleEmergencyContactChange}
+              >
+                <option value="">Select Relationship</option>
+                <option value="parent">Parent</option>
+                <option value="guardian">Guardian</option>
+                <option value="sibling">Sibling</option>
+                <option value="spouse">Spouse</option>
+                <option value="relative">Relative</option>
+                <option value="friend">Friend</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="emergencyPhone">Contact Phone Number</label>
+              <input
+                type="tel"
+                id="emergencyPhone"
+                name="phone"
+                value={profile.emergencyContact.phone}
+                onChange={handleEmergencyContactChange}
+                placeholder="+266 5XXX XXXX"
+              />
             </div>
           </div>
         </div>
@@ -306,7 +390,7 @@ const EducationProfile = () => {
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="cancel-button"
+            className="btn-cancel"
             disabled={saving}
           >
             Cancel
@@ -314,40 +398,12 @@ const EducationProfile = () => {
           <button
             type="submit"
             disabled={saving}
-            className="save-button"
+            className="btn-save"
           >
             {saving ? 'Saving...' : 'Save Profile'}
           </button>
         </div>
       </form>
-
-      {/* Profile Completion Tips */}
-      <div className="completion-tips">
-        <h3>Profile Completion Tips</h3>
-        <div className="tips-list">
-          <div className="tip-item">
-            <span className="tip-icon">🎯</span>
-            <div className="tip-content">
-              <h4>Complete All Grades</h4>
-              <p>Enter grades for all subjects you completed to see the full range of courses you qualify for.</p>
-            </div>
-          </div>
-          <div className="tip-item">
-            <span className="tip-icon">📊</span>
-            <div className="tip-content">
-              <h4>Accurate Information</h4>
-              <p>Ensure all personal and academic information is accurate to avoid application issues.</p>
-            </div>
-          </div>
-          <div className="tip-item">
-            <span className="tip-icon">🔍</span>
-            <div className="tip-content">
-              <h4>Review Course Requirements</h4>
-              <p>Check specific course requirements before applying to ensure you meet all criteria.</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

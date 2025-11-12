@@ -1,9 +1,16 @@
 import React from 'react';
-import { useRouteError, Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 const ErrorPage = () => {
-  const error = useRouteError();
-  console.error(error);
+  const location = useLocation();
+  
+  // Try to get error from location state, or use default
+  const error = location.state?.error || {
+    status: location.pathname === '/404' ? 404 : 500,
+    statusText: location.pathname === '/404' ? 'Not Found' : 'Internal Server Error'
+  };
+  
+  console.error('Error page:', error);
 
   const getErrorMessage = () => {
     if (error.status === 404) {

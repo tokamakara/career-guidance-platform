@@ -2,21 +2,30 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .layout-content {
   display: flex;
   flex: 1;
   margin-top: 70px; /* Height of navbar */
+  width: 100%;
+  overflow-x: hidden;
+  padding-top: 0;
 }
 
 .main-content {
   flex: 1;
   padding: 30px;
-  margin-left: 250px; /* Width of sidebar */
   background: #f8f9fa;
   min-height: calc(100vh - 70px);
   overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .auth-main {
@@ -24,13 +33,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #dc3545;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0;
+    width: 100%;
     padding: 20px 15px;
   }
   

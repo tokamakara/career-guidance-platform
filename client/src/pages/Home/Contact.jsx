@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Navbar from '../../components/common/Navbar/Navbar';
 import './Contact.css';
 
 const Contact = () => {
@@ -39,6 +40,7 @@ const Contact = () => {
   if (sent) {
     return (
       <div className="contact-page">
+        <Navbar />
         <div className="success-message">
           <div className="success-icon">✓</div>
           <h2>Message Sent Successfully!</h2>
@@ -56,6 +58,7 @@ const Contact = () => {
 
   return (
     <div className="contact-page">
+      <Navbar />
       <div className="contact-hero">
         <div className="container">
           <h1>Contact Us</h1>
@@ -66,48 +69,6 @@ const Contact = () => {
       <div className="contact-content">
         <div className="container">
           <div className="contact-grid">
-            <div className="contact-info">
-              <h2>Get In Touch</h2>
-              <p>
-                Have questions about our platform? Need support with your account? 
-                We're here to help you succeed in your educational and career journey.
-              </p>
-
-              <div className="contact-methods">
-                <div className="contact-method">
-                  <div className="method-icon">📧</div>
-                  <div className="method-info">
-                    <h3>Email Us</h3>
-                    <p>toka70518@gmail.com</p>
-                  </div>
-                </div>
-
-                <div className="contact-method">
-                  <div className="method-icon">📞</div>
-                  <div className="method-info">
-                    <h3>Call Us</h3>
-                    <p>+266 5973 4278</p>
-                  </div>
-                </div>
-
-                <div className="contact-method">
-                  <div className="method-icon">📍</div>
-                  <div className="method-info">
-                    <h3>Visit Us</h3>
-                    <p>Maseru, Lesotho</p>
-                  </div>
-                </div>
-
-                <div className="contact-method">
-                  <div className="method-icon">🕒</div>
-                  <div className="method-info">
-                    <h3>Working Hours</h3>
-                    <p>Monday - Friday: 8:00 AM - 5:00 PM</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div className="contact-form-container">
               <form onSubmit={handleSubmit} className="contact-form">
                 <h2>Send us a Message</h2>
@@ -188,6 +149,48 @@ const Contact = () => {
                 </button>
               </form>
             </div>
+
+            <div className="contact-info">
+              <h2>Get In Touch</h2>
+              <p>
+                Have questions about our platform? Need support with your account? 
+                We're here to help you succeed in your educational and career journey.
+              </p>
+
+              <div className="contact-methods">
+                <div className="contact-method">
+                  <div className="method-icon">📧</div>
+                  <div className="method-info">
+                    <h3>Email Us</h3>
+                    <p>toka70518@gmail.com</p>
+                  </div>
+                </div>
+
+                <div className="contact-method">
+                  <div className="method-icon">📞</div>
+                  <div className="method-info">
+                    <h3>Call Us</h3>
+                    <p>+266 5973 4278</p>
+                  </div>
+                </div>
+
+                <div className="contact-method">
+                  <div className="method-icon">📍</div>
+                  <div className="method-info">
+                    <h3>Visit Us</h3>
+                    <p>Maseru, Lesotho</p>
+                  </div>
+                </div>
+
+                <div className="contact-method">
+                  <div className="method-icon">🕒</div>
+                  <div className="method-info">
+                    <h3>Working Hours</h3>
+                    <p>Monday - Friday: 8:00 AM - 5:00 PM</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -199,8 +202,8 @@ const Contact = () => {
             <div className="faq-item">
               <h3>How do I create an account?</h3>
               <p>
-                Click on the "Register" button in the top navigation and fill out 
-                the registration form with your details. You'll need to verify your 
+                Click on the "Sign Up" button in the top navigation and fill out 
+                the sign up form with your details. You'll need to verify your 
                 email address to activate your account.
               </p>
             </div>
@@ -216,7 +219,7 @@ const Contact = () => {
             <div className="faq-item">
               <h3>How do institutions join the platform?</h3>
               <p>
-                Institutions can register on our platform and will be verified by 
+                Institutions can sign up on our platform and will be verified by 
                 our admin team. Once approved, they can start adding courses and 
                 managing applications.
               </p>

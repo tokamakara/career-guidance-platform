@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken, requireRole } = require('../middlewares/authMiddleware');
 const { validateRequest, applicationSchemas } = require('../middlewares/validationMiddleware');
+const { courseApplicationLimiter } = require('../middlewares/rateLimiter');
 const applicationController = require('../controllers/applicationController');
 
 const router = express.Router();
@@ -10,6 +11,7 @@ router.post(
   '/student/apply',
   authenticateToken,
   requireRole(['student']),
+  courseApplicationLimiter,
   validateRequest(applicationSchemas.createApplication),
   applicationController.createApplication
 );

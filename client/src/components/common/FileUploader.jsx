@@ -6,7 +6,7 @@ import './FileUploader.css';
 const FileUploader = ({
   onUploadComplete,
   onUploadError,
-  allowedTypes = ['image/*', 'application/pdf', '.doc', '.docx'],
+  allowedTypes = ['application/pdf'],
   maxSize = 5 * 1024 * 1024, // 5MB
   maxFiles = 1,
   path,
@@ -32,9 +32,7 @@ const FileUploader = ({
     selectedFiles.forEach(file => {
       const validation = storageService.validateFile(file, {
         maxSize,
-        allowedTypes: allowedTypes.includes('image/*') ? 
-          ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'] :
-          allowedTypes
+        allowedTypes: ['application/pdf'] // Only PDF files allowed
       });
 
       if (validation.isValid) {
@@ -160,10 +158,8 @@ const FileUploader = ({
   };
 
   const getFileIcon = (fileType) => {
-    if (fileType.startsWith('image/')) return '🖼️';
-    if (fileType === 'application/pdf') return '📄';
-    if (fileType.includes('word') || fileType.includes('document')) return '📝';
-    return '📎';
+    // Only PDF files are allowed, so always return PDF icon
+    return 'PDF';
   };
 
   const formatFileSize = (bytes) => {
@@ -184,12 +180,12 @@ const FileUploader = ({
         onClick={() => fileInputRef.current?.click()}
       >
         <div className="drop-zone-content">
-          <div className="upload-icon">📁</div>
+          <div className="upload-icon"></div>
           <p className="drop-zone-text">
-            Drag and drop files here or click to browse
+            Drag and drop PDF files here or click to browse
           </p>
           <p className="drop-zone-subtext">
-            Maximum file size: {formatFileSize(maxSize)} • Maximum files: {maxFiles}
+            Only PDF files allowed • Maximum file size: {formatFileSize(maxSize)} • Maximum files: {maxFiles}
           </p>
         </div>
         

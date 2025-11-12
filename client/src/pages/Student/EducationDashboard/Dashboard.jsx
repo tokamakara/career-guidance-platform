@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { applicationService } from '../../../services/api/applicationService';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotification } from '../../../context/NotificationContext';
-import ModeSwitcher from '../../../components/common/ModeSwitcher';
 import './EducationDashboard.css';
 
 const EducationDashboard = () => {
@@ -17,7 +16,7 @@ const EducationDashboard = () => {
   const [loading, setLoading] = useState(true);
   
   const { userProfile } = useAuth();
-  const { addNotification } = useNotification();
+  const { addNotification, notifications } = useNotification();
 
   useEffect(() => {
     fetchDashboardData();
@@ -25,28 +24,65 @@ const EducationDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [applicationsResult] = await Promise.all([
-        applicationService.getStudentApplications()
-      ]);
+      setLoading(true);
+      const applicationsResult = await applicationService.getStudentApplications();
 
-      const applications = applicationsResult.data || [];
+      // Handle different response formats
+      let applications = [];
       
+      if (applicationsResult && applicationsResult.success && applicationsResult.data) {
+        // Standard API response: { success: true, data: [...] }
+        applications = Array.isArray(applicationsResult.data) ? applicationsResult.data : [];
+      } else if (applicationsResult && Array.isArray(applicationsResult)) {
+        // Direct array response
+        applications = applicationsResult;
+      } else if (applicationsResult && applicationsResult.data) {
+        // Response with data property
+        applications = Array.isArray(applicationsResult.data) ? applicationsResult.data : [];
+      } else {
+        // Empty or unexpected format
+        applications = [];
+        console.warn('Unexpected response format:', applicationsResult);
+      }
+      
+      // Calculate stats
+      const pendingCount = applications.filter(app => app.status === 'pending' || app.status === 'under-review').length;
+      const admittedCount = applications.filter(app => app.status === 'admitted' || app.status === 'accepted').length;
+      const institutionsCount = new Set(applications.map(app => app.institutionId).filter(Boolean)).size;
+
       setStats({
         applications: applications.length,
-        pending: applications.filter(app => app.status === 'pending').length,
-        admitted: applications.filter(app => app.status === 'admitted').length,
-        institutions: new Set(applications.map(app => app.institutionId)).size
+        pending: pendingCount,
+        admitted: admittedCount,
+        institutions: institutionsCount
       });
 
       setRecentApplications(applications.slice(0, 3));
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load dashboard data'
+      // Only log actual errors (not empty data scenarios)
+      if (error.message && !error.message.includes('returning empty')) {
+        console.warn('Error fetching dashboard data:', error.message);
+      }
+      
+      // Set default stats (empty data is normal, not an error)
+      setStats({
+        applications: 0,
+        pending: 0,
+        admitted: 0,
+        institutions: 0
       });
+      setRecentApplications([]);
+      
+      // Only show notification for auth errors or actual failures
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled by auth context, don't show notification here
+        return;
+      }
+      
+      // Don't show notifications for empty data - it's normal if user has no applications
+      // Only show for actual unexpected errors
     } finally {
       setLoading(false);
     }
@@ -70,7 +106,6 @@ const EducationDashboard = () => {
 
   return (
     <div className="education-dashboard">
-      <ModeSwitcher />
       
       <div className="dashboard-header">
         <h1>Education Dashboard</h1>
@@ -80,7 +115,7 @@ const EducationDashboard = () => {
       {/* Quick Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">📝</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.applications}</h3>
             <p>Total Applications</p>
@@ -88,7 +123,7 @@ const EducationDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">⏳</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.pending}</h3>
             <p>Pending Reviews</p>
@@ -96,7 +131,7 @@ const EducationDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">🎓</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.admitted}</h3>
             <p>Admission Offers</p>
@@ -104,7 +139,7 @@ const EducationDashboard = () => {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">🏫</div>
+          <div className="stat-icon" />
           <div className="stat-info">
             <h3>{stats.institutions}</h3>
             <p>Institutions Applied</p>
@@ -117,25 +152,25 @@ const EducationDashboard = () => {
         <h2>Quick Actions</h2>
         <div className="actions-grid">
           <Link to="/student/education/institutions" className="action-card">
-            <div className="action-icon">🔍</div>
+            <div className="action-icon" />
             <h4>Browse Institutions</h4>
             <p>Discover universities and colleges in Lesotho</p>
           </Link>
 
           <Link to="/student/education/apply" className="action-card">
-            <div className="action-icon">📝</div>
+            <div className="action-icon" />
             <h4>Apply to Courses</h4>
             <p>Submit applications to your preferred programs</p>
           </Link>
 
           <Link to="/student/education/applications" className="action-card">
-            <div className="action-icon">📋</div>
+            <div className="action-icon" />
             <h4>My Applications</h4>
             <p>Track your application status and updates</p>
           </Link>
 
           <Link to="/student/education/results" className="action-card">
-            <div className="action-icon">✅</div>
+            <div className="action-icon" />
             <h4>Admission Results</h4>
             <p>View your admission decisions</p>
           </Link>

@@ -1,4 +1,6 @@
 const { admin, db } = require('../config/firebaseAdmin');
+const logger = require('../utils/logger');
+const cache = require('../utils/cache');
 const emailService = require('../utils/emailService');
 const admissionManager = require('../utils/admissionManager');
 
@@ -222,51 +224,117 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
     }
   }
 
-  // Get student's applications
+  // Get student's applications with pagination
   async getStudentApplications(req, res) {
     try {
       const studentId = req.user.uid;
       const { status } = req.query;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const lastDocIdParam = req.query.lastDocId; // For cursor-based pagination
+
+      // Cache key (only cache first page without status filter for dashboard)
+      const cacheKey = page === 1 && !status 
+        ? `applications:student:${studentId}:page:1`
+        : null;
+      
+      if (cacheKey) {
+        const cached = cache.get(cacheKey);
+        if (cached) {
+          logger.info('Cache hit for student applications');
+          return res.json(cached);
+        }
+      }
 
       let query = db.collection('educationApplications')
-        .where('studentId', '==', studentId);
+        .where('studentId', '==', studentId)
+        .orderBy('applicationDate', 'desc')
+        .limit(limit);
 
       if (status) {
         query = query.where('status', '==', status);
       }
 
-      const snapshot = await query.orderBy('applicationDate', 'desc').get();
+      // For cursor-based pagination
+      if (lastDocIdParam && page > 1) {
+        const lastDoc = await db.collection('educationApplications').doc(lastDocIdParam).get();
+        if (lastDoc.exists) {
+          query = query.startAfter(lastDoc);
+        }
+      }
+
+      // Parallelize count query and data query
+      let countQuery = db.collection('educationApplications')
+        .where('studentId', '==', studentId);
+      if (status) {
+        countQuery = countQuery.where('status', '==', status);
+      }
+
+      const [totalSnapshot, snapshot] = await Promise.all([
+        countQuery.get(),
+        query.get()
+      ]);
+
+      const total = totalSnapshot.size;
+      const totalPages = Math.ceil(total / limit);
 
       const applications = [];
+      let lastDocId = null;
+      
       snapshot.forEach(doc => {
+        lastDocId = doc.id; // Track last document ID for next page
         applications.push({
           id: doc.id,
           ...doc.data()
         });
       });
 
-      res.json({
+      const response = {
         success: true,
-        data: applications
-      });
+        data: applications,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: snapshot.size === limit && page < totalPages,
+          hasPrevPage: page > 1,
+          lastDocId: lastDocId // For cursor-based pagination
+        }
+      };
+
+      // Cache first page for 2 minutes
+      if (cacheKey) {
+        cache.set(cacheKey, response, 2 * 60 * 1000);
+      }
+
+      res.json(response);
 
     } catch (error) {
-      console.error('Get applications error:', error);
+      logger.logError(error, { 
+        context: 'getStudentApplications',
+        studentId: req.user?.uid 
+      });
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch applications'
+        message: error.message || 'Failed to fetch applications'
       });
     }
   }
 
-  // Get applications for institute
+  // Get applications for institute with pagination
   async getInstituteApplications(req, res) {
     try {
       const instituteId = req.user.uid;
       const { status, courseId } = req.query;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const lastDocIdParam = req.query.lastDocId; // For cursor-based pagination
 
       let query = db.collection('educationApplications')
-        .where('institutionId', '==', instituteId);
+        .where('institutionId', '==', instituteId)
+        .orderBy('applicationDate', 'desc')
+        .limit(limit);
 
       if (status) {
         query = query.where('status', '==', status);
@@ -276,11 +344,36 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
         query = query.where('courseId', '==', courseId);
       }
 
-      const snapshot = await query.orderBy('applicationDate', 'desc').get();
+      // For cursor-based pagination
+      if (lastDocIdParam && page > 1) {
+        const lastDoc = await db.collection('educationApplications').doc(lastDocIdParam).get();
+        if (lastDoc.exists) {
+          query = query.startAfter(lastDoc);
+        }
+      }
+
+      // Get total count (separate query)
+      let countQuery = db.collection('educationApplications')
+        .where('institutionId', '==', instituteId);
+      if (status) {
+        countQuery = countQuery.where('status', '==', status);
+      }
+      if (courseId) {
+        countQuery = countQuery.where('courseId', '==', courseId);
+      }
+      const totalSnapshot = await countQuery.get();
+      const total = totalSnapshot.size;
+      const totalPages = Math.ceil(total / limit);
+
+      // Apply pagination
+      const snapshot = await query.get();
 
       const applications = [];
+      let lastDocId = null;
+      
       for (const doc of snapshot.docs) {
         const application = doc.data();
+        lastDocId = doc.id; // Track last document ID for next page
         
         // Get student details
         const studentDoc = await db.collection('users').doc(application.studentId).get();
@@ -302,7 +395,16 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
 
       res.json({
         success: true,
-        data: applications
+        data: applications,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: snapshot.size === limit && page < totalPages,
+          hasPrevPage: page > 1,
+          lastDocId: lastDocId // For cursor-based pagination
+        }
       });
 
     } catch (error) {
@@ -397,14 +499,32 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
 
       await applicationRef.update(updateData);
 
-      // Send email notification
+      // Send email notification with detailed feedback
       if (status === 'admitted' || status === 'rejected') {
+        const rejectionReason = status === 'rejected' && notes ? notes : null;
+        const improvementSuggestions = status === 'rejected' ? this.generateImprovementSuggestions(application) : null;
+        
         await emailService.sendAdmissionDecision(
           application.studentEmail,
           application.institutionName,
           application.courseName,
-          status
+          status,
+          rejectionReason,
+          improvementSuggestions
         );
+
+        // Create UI notification
+        const notificationService = require('../utils/notificationService');
+        await notificationService.createNotification(application.studentId, {
+          type: 'admission_decision',
+          title: status === 'admitted' 
+            ? `Congratulations! Admission Offer - ${application.institutionName}`
+            : `Admission Decision - ${application.institutionName}`,
+          message: status === 'admitted'
+            ? `Your application for ${application.courseName} has been accepted. Please log in to accept the offer.`
+            : `Your application for ${application.courseName} has been rejected. Please check your email for detailed feedback.`,
+          actionUrl: `/student/education/results`
+        });
       }
 
       // Process waitlist if someone was admitted
@@ -487,21 +607,31 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
       });
 
       // Reject all other admitted applications for this student
-      const otherAdmittedApps = await db.collection('educationApplications')
+      // Note: Firestore doesn't support != operator, so we fetch all and filter in memory
+      const allAdmittedApps = await db.collection('educationApplications')
         .where('studentId', '==', studentId)
         .where('status', '==', 'admitted')
-        .where('id', '!=', applicationId)
         .get();
 
       const batch = db.batch();
-      otherAdmittedApps.forEach(doc => {
-        batch.update(doc.ref, {
-          status: 'rejected',
-          notes: 'Automatically rejected - student accepted another offer'
-        });
+      let batchCount = 0;
+      
+      allAdmittedApps.forEach(doc => {
+        // Filter out the current application in memory
+        if (doc.id !== applicationId) {
+          batch.update(doc.ref, {
+            status: 'rejected',
+            notes: 'Automatically rejected - student accepted another offer',
+            updatedAt: new Date()
+          });
+          batchCount++;
+        }
       });
 
-      await batch.commit();
+      // Firestore batch operations are limited to 500 writes
+      if (batchCount > 0) {
+        await batch.commit();
+      }
 
       res.json({
         success: true,
@@ -515,6 +645,20 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
         message: 'Failed to accept admission offer'
       });
     }
+  }
+
+  // Generate improvement suggestions for rejected applications
+  generateImprovementSuggestions(application) {
+    const suggestions = [];
+    
+    suggestions.push('Review the course requirements and ensure you meet all prerequisites');
+    suggestions.push('Consider improving your high school grades in the required subjects');
+    suggestions.push('Take additional courses or certifications related to the field');
+    suggestions.push('Gain relevant experience through internships or volunteer work');
+    suggestions.push('Update your profile with any new qualifications or achievements');
+    suggestions.push('Consider applying to similar courses that may have different requirements');
+    
+    return suggestions;
   }
 
   // Helper function to check course requirements

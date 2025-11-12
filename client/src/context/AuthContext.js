@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services/firebase/auth';
+import { getIdToken } from 'firebase/auth';
 
 const AuthContext = createContext();
 
@@ -44,6 +45,15 @@ export const AuthProvider = ({ children }) => {
           console.log('✅ User found in persisted session:', existingUser.email);
           setCurrentUser(existingUser);
           
+          // Get and store Firebase ID token for API authentication
+          try {
+            const idToken = await getIdToken(existingUser);
+            localStorage.setItem('authToken', idToken);
+            console.log('✅ ID token stored for API authentication');
+          } catch (tokenError) {
+            console.error('❌ Failed to get ID token:', tokenError);
+          }
+          
           // Step 2: Load user profile from Firestore
           try {
             console.log('📋 Loading user profile data from Firestore...');
@@ -80,6 +90,8 @@ export const AuthProvider = ({ children }) => {
           console.log('🔒 No user session found - user is not authenticated');
           setCurrentUser(null);
           setUserProfile(null);
+          // Clear token if no user
+          localStorage.removeItem('authToken');
         }
       } catch (initError) {
         console.error('❌ Auth initialization failed:', initError);
@@ -101,6 +113,15 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         // User signed in or changed
         setCurrentUser(user);
+        
+        // Get and store Firebase ID token for API authentication
+        try {
+          const idToken = await getIdToken(user);
+          localStorage.setItem('authToken', idToken);
+          console.log('✅ ID token refreshed on auth state change');
+        } catch (tokenError) {
+          console.error('❌ Failed to get ID token:', tokenError);
+        }
         
         try {
           // Reload profile data on auth state change
@@ -127,6 +148,8 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(null);
         setUserProfile(null);
         setError(''); // Clear any previous errors on logout
+        // Clear token on logout
+        localStorage.removeItem('authToken');
       }
     });
 
@@ -225,6 +248,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Login with Google
+  const loginWithGoogle = async () => {
+    console.log('🔐 Attempting Google login...');
+    
+    try {
+      setError('');
+      setLoading(true);
+      
+      const result = await authService.loginWithGoogle();
+      
+      console.log('✅ Google login successful:', {
+        userId: result.user.uid,
+        email: result.user.email
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Google login failed:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Enhanced profile update function
   const updateProfile = async (updates) => {
     console.log('📝 Updating user profile:', {
@@ -278,6 +326,7 @@ export const AuthProvider = ({ children }) => {
     // Actions
     register,
     login,
+    loginWithGoogle,
     logout,
     updateProfile,
     resetPassword,

@@ -49,6 +49,16 @@ const ApplyInstitutions = () => {
     }
   }, [formData.facultyId, selectedInstitution]);
 
+  // Keep selectedFaculty in sync with selection
+  useEffect(() => {
+    if (selectedInstitution && formData.facultyId) {
+      const fac = selectedInstitution.faculties?.find(f => f.id === formData.facultyId) || null;
+      setSelectedFaculty(fac);
+    } else {
+      setSelectedFaculty(null);
+    }
+  }, [formData.facultyId, selectedInstitution]);
+
   useEffect(() => {
     if (courses.length > 0 && highSchoolSubjects.length > 0) {
       filterQualifiedCourses();
@@ -287,12 +297,11 @@ const ApplyInstitutions = () => {
 
   const renderRequirementStatus = (course) => {
     const qualificationStatus = checkCourseQualification(course);
-    
-    if (qualificationStatus.qualified) {
-      return <span className="qualified-badge">✅ Qualified</span>;
-    } else {
-      return <span className="not-qualified-badge">❌ Not Qualified</span>;
-    }
+    return (
+      <span className={qualificationStatus.qualified ? 'qualified-badge' : 'not-qualified-badge'}>
+        {qualificationStatus.qualified ? 'Qualified' : 'Not qualified'}
+      </span>
+    );
   };
 
   if (loading) {
@@ -424,7 +433,7 @@ const ApplyInstitutions = () => {
                   <option value="">Select a Course</option>
                   {filteredCourses.map(course => (
                     <option key={course.id} value={course.id}>
-                      {course.name} - {course.code} ({course.seatsAvailable} seats) - {renderRequirementStatus(course)}
+                      {course.name} - {course.code} ({course.seatsAvailable} seats)
                     </option>
                   ))}
                   {filteredCourses.length === 0 && courses.length > 0 && (
@@ -488,7 +497,7 @@ const ApplyInstitutions = () => {
                           {studentSubject && (
                             <span className="student-grade">(Your grade: {studentSubject.grade})</span>
                           )}
-                          {meetsRequirement ? ' ✅' : ' ❌'}
+                          <span className="req-indicator">{meetsRequirement ? 'Meets requirement' : 'Does not meet'}</span>
                         </div>
                       );
                     })}
@@ -524,22 +533,18 @@ const ApplyInstitutions = () => {
           <h3>Application Guidelines</h3>
           <div className="info-cards">
             <div className="info-card">
-              <div className="info-icon">📝</div>
               <h4>Application Limit</h4>
               <p>Maximum 2 courses per institution</p>
             </div>
             <div className="info-card">
-              <div className="info-icon">⏰</div>
               <h4>Deadlines</h4>
               <p>Check individual course deadlines</p>
             </div>
             <div className="info-card">
-              <div className="info-icon">✅</div>
               <h4>Requirements</h4>
               <p>Only qualified courses are shown</p>
             </div>
             <div className="info-card">
-              <div className="info-icon">📧</div>
               <h4>Notifications</h4>
               <p>Email updates about application status</p>
             </div>

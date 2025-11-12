@@ -21,13 +21,13 @@
 }
 
 .filter-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #2563eb;
+  color: #2563eb;
 }
 
 .filter-btn.active {
-  background: #667eea;
-  border-color: #667eea;
+  background: #2563eb;
+  border-color: #2563eb;
   color: white;
 }
 
@@ -42,7 +42,7 @@
   padding: 25px;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #2563eb;
 }
 
 .application-header {
@@ -59,7 +59,7 @@
 }
 
 .institution {
-  color: #666;
+  color: #475569;
   margin: 0 0 12px 0;
   font-size: 1rem;
   font-weight: 500;
@@ -140,8 +140,8 @@
 .btn-outline {
   display: inline-block;
   padding: 8px 16px;
-  border: 1px solid #667eea;
-  color: #667eea;
+  border: 1px solid #2563eb;
+  color: #2563eb;
   text-decoration: none;
   border-radius: 6px;
   font-weight: 500;
@@ -149,7 +149,7 @@
 }
 
 .btn-outline:hover {
-  background: #667eea;
+  background: #2563eb;
   color: white;
 }
 
@@ -193,13 +193,13 @@
 }
 
 .badge-success {
-  background: #d1edff;
-  color: #155724;
+  background: #e0f2fe;
+  color: #0f766e;
 }
 
 .badge-danger {
-  background: #f8d7da;
-  color: #721c24;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .badge-info {
@@ -208,7 +208,7 @@
 }
 
 .badge-primary {
-  background: #667eea;
+  background: #2563eb;
   color: white;
 }
 

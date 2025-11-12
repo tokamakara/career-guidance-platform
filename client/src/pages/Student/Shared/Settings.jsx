@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
-import { useTheme } from '../../../context/ThemeContext';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { useMode } from '../../../context/ModeContext';
+import './Settings.css';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -17,8 +19,8 @@ const Settings = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user, updateProfile } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { currentUser, userProfile, updateProfile } = useAuth();
+  const { isDark, toggleMode } = useMode();
 
   useEffect(() => {
     loadSettings();
@@ -60,7 +62,7 @@ const Settings = () => {
   const handleExportData = () => {
     // Simulate data export
     const exportData = {
-      profile: user,
+      profile: userProfile || currentUser,
       settings: settings,
       exportedAt: new Date().toISOString()
     };
@@ -228,7 +230,7 @@ const Settings = () => {
                 <input
                   type="checkbox"
                   checked={isDark}
-                  onChange={toggleTheme}
+                  onChange={toggleMode}
                 />
                 <span className="slider"></span>
               </label>
@@ -333,22 +335,22 @@ const Settings = () => {
       <div className="settings-quick-links">
         <h3>Need Help?</h3>
         <div className="quick-links-grid">
-          <a href="/help/privacy" className="quick-link">
+          <Link to="/privacy" className="quick-link">
             <span className="link-icon">🔒</span>
             <span className="link-text">Privacy Policy</span>
-          </a>
-          <a href="/help/terms" className="quick-link">
+          </Link>
+          <Link to="/terms" className="quick-link">
             <span className="link-icon">📄</span>
             <span className="link-text">Terms of Service</span>
-          </a>
-          <a href="/help/faq" className="quick-link">
+          </Link>
+          <Link to="/faq" className="quick-link">
             <span className="link-icon">❓</span>
             <span className="link-text">FAQ</span>
-          </a>
-          <a href="/contact" className="quick-link">
+          </Link>
+          <Link to="/contact" className="quick-link">
             <span className="link-icon">💬</span>
             <span className="link-text">Contact Support</span>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

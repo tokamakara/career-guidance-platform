@@ -36,7 +36,7 @@ const ModeSwitcher = () => {
         className={`mode-button ${isEducationMode ? 'active' : ''}`}
         onClick={() => handleModeSwitch('education')}
       >
-        <span className="mode-icon">🎓</span>
+        <span className="mode-icon"></span>
         <span className="mode-text">Education</span>
       </button>
       
@@ -44,7 +44,7 @@ const ModeSwitcher = () => {
         className={`mode-button ${isCareerMode ? 'active' : ''}`}
         onClick={() => handleModeSwitch('career')}
       >
-        <span className="mode-icon">💼</span>
+        <span className="mode-icon"></span>
         <span className="mode-text">Career</span>
       </button>
     </div>

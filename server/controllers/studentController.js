@@ -9,9 +9,29 @@ class StudentController {
       const studentDoc = await db.collection('users').doc(studentId).get();
 
       if (!studentDoc.exists) {
-        return res.status(404).json({
-          success: false,
-          message: 'Student profile not found'
+        // Return empty profile structure instead of 404
+        return res.json({
+          success: true,
+          data: {
+            id: studentId,
+            firstName: '',
+            lastName: '',
+            email: req.user.email || '',
+            phone: '',
+            dateOfBirth: '',
+            gender: '',
+            idNumber: '',
+            address: '',
+            city: '',
+            postalCode: '',
+            country: 'Lesotho',
+            bio: '',
+            emergencyContact: {
+              name: '',
+              relationship: '',
+              phone: ''
+            }
+          }
         });
       }
 
@@ -29,7 +49,8 @@ class StudentController {
       console.error('Get student profile error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch student profile'
+        message: 'Failed to fetch student profile',
+        error: error.message
       });
     }
   }
@@ -46,36 +67,59 @@ class StudentController {
       };
 
       // Basic info
-      if (updates.firstName) profileUpdates.firstName = updates.firstName;
-      if (updates.lastName) profileUpdates.lastName = updates.lastName;
-      if (updates.phone) profileUpdates.phone = updates.phone;
-      if (updates.address) profileUpdates.address = updates.address;
-      if (updates.dateOfBirth) profileUpdates.dateOfBirth = new Date(updates.dateOfBirth);
+      if (updates.firstName !== undefined) profileUpdates.firstName = updates.firstName;
+      if (updates.lastName !== undefined) profileUpdates.lastName = updates.lastName;
+      if (updates.phone !== undefined) profileUpdates.phone = updates.phone;
+      if (updates.dateOfBirth !== undefined) {
+        profileUpdates.dateOfBirth = updates.dateOfBirth ? new Date(updates.dateOfBirth) : null;
+      }
+      if (updates.gender !== undefined) profileUpdates.gender = updates.gender;
+      if (updates.idNumber !== undefined) profileUpdates.idNumber = updates.idNumber;
 
-      // Education info
-      if (updates.highSchool) profileUpdates.highSchool = updates.highSchool;
-      if (updates.highSchoolResults) profileUpdates.highSchoolResults = updates.highSchoolResults;
+      // Address info
+      if (updates.address !== undefined) profileUpdates.address = updates.address;
+      if (updates.city !== undefined) profileUpdates.city = updates.city;
+      if (updates.postalCode !== undefined) profileUpdates.postalCode = updates.postalCode;
+      if (updates.country !== undefined) profileUpdates.country = updates.country;
 
-      // Career info
-      if (updates.skills) profileUpdates.skills = updates.skills;
-      if (updates.workExperience) profileUpdates.workExperience = updates.workExperience;
-      if (updates.certificates) profileUpdates.certificates = updates.certificates;
-      if (updates.resumeUrl) profileUpdates.resumeUrl = updates.resumeUrl;
-      if (updates.transcriptUrl) profileUpdates.transcriptUrl = updates.transcriptUrl;
+      // Bio
+      if (updates.bio !== undefined) profileUpdates.bio = updates.bio;
+
+      // Emergency contact
+      if (updates.emergencyContact !== undefined) {
+        profileUpdates.emergencyContact = updates.emergencyContact;
+      }
+
+      // Education info (preserve existing if not provided)
+      if (updates.highSchool !== undefined) profileUpdates.highSchool = updates.highSchool;
+      if (updates.highSchoolResults !== undefined) profileUpdates.highSchoolResults = updates.highSchoolResults;
+
+      // Career info (preserve existing if not provided)
+      if (updates.skills !== undefined) profileUpdates.skills = updates.skills;
+      if (updates.workExperience !== undefined) profileUpdates.workExperience = updates.workExperience;
+      if (updates.certificates !== undefined) profileUpdates.certificates = updates.certificates;
+      if (updates.resumeUrl !== undefined) profileUpdates.resumeUrl = updates.resumeUrl;
+      if (updates.transcriptUrl !== undefined) profileUpdates.transcriptUrl = updates.transcriptUrl;
 
       // Update student profile
       await db.collection('users').doc(studentId).update(profileUpdates);
 
+      // Fetch updated profile to return
+      const updatedDoc = await db.collection('users').doc(studentId).get();
+      const updatedProfile = updatedDoc.exists ? { id: updatedDoc.id, ...updatedDoc.data() } : null;
+
       res.json({
         success: true,
-        message: 'Student profile updated successfully'
+        message: 'Student profile updated successfully',
+        data: updatedProfile
       });
 
     } catch (error) {
       console.error('Update student profile error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to update student profile'
+        message: 'Failed to update student profile',
+        error: error.message
       });
     }
   }

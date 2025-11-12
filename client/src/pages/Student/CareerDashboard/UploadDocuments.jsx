@@ -14,12 +14,12 @@ const UploadDocuments = () => {
   const { addNotification } = useNotification();
 
   const documentTypes = [
-    { value: 'transcript', label: 'Academic Transcript', icon: '📊' },
-    { value: 'certificate', label: 'Certificate', icon: '🏆' },
-    { value: 'cv', label: 'Curriculum Vitae', icon: '📝' },
-    { value: 'cover_letter', label: 'Cover Letter', icon: '✉️' },
-    { value: 'id', label: 'ID Document', icon: '🆔' },
-    { value: 'other', label: 'Other Document', icon: '📎' }
+    { value: 'transcript', label: 'Academic Transcript' },
+    { value: 'certificate', label: 'Certificate' },
+    { value: 'cv', label: 'Curriculum Vitae' },
+    { value: 'cover_letter', label: 'Cover Letter' },
+    { value: 'id', label: 'ID Document' },
+    { value: 'other', label: 'Other Document' }
   ];
 
   useEffect(() => {
@@ -28,33 +28,27 @@ const UploadDocuments = () => {
 
   const fetchDocuments = async () => {
     try {
-      // This would fetch from Firestore in a real implementation
-      // For now, using mock data
-      setDocuments([
-        {
-          id: '1',
-          name: 'Bachelor_Transcript.pdf',
-          type: 'transcript',
-          url: '#',
-          uploadedAt: new Date('2024-01-15'),
-          size: 2450000
-        },
-        {
-          id: '2',
-          name: 'Lerato_Mokhele_CV.pdf',
-          type: 'cv',
-          url: '#',
-          uploadedAt: new Date('2024-01-10'),
-          size: 1500000
-        }
-      ]);
+      setLoading(true);
+      // TODO: Fetch real documents from Firestore/API
+      // For now, return empty array - no mock data
+      setDocuments([]);
     } catch (error) {
-      console.error('Error fetching documents:', error);
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load documents'
-      });
+      // Only log if it's an actual error (not empty data scenario)
+      if (error.message && !error.message.includes('returning empty')) {
+        console.warn('Error fetching documents:', error.message);
+      }
+      
+      // Set empty array - no documents is a valid state, not an error
+      setDocuments([]);
+      
+      // Only show notification for auth errors
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled elsewhere
+        return;
+      }
+      
+      // Don't show error notifications for empty data - it's normal if user has no documents
     } finally {
       setLoading(false);
     }
@@ -126,8 +120,8 @@ const UploadDocuments = () => {
   };
 
   const getDocumentIcon = (type) => {
-    const docType = documentTypes.find(t => t.value === type);
-    return docType ? docType.icon : '📎';
+    // No icons, just return empty or use text label
+    return 'PDF';
   };
 
   const getTypeLabel = (type) => {
@@ -164,7 +158,7 @@ const UploadDocuments = () => {
           </p>
           <ul className="upload-requirements">
             <li>Maximum file size: 5MB per file</li>
-            <li>Allowed formats: PDF, DOC, DOCX, JPG, PNG</li>
+            <li>Allowed format: PDF only</li>
             <li>Recommended: Academic transcripts, CV, Certificates</li>
           </ul>
         </div>
@@ -172,13 +166,7 @@ const UploadDocuments = () => {
         <FileUploader
           onUploadComplete={handleUploadComplete}
           onUploadError={handleUploadError}
-          allowedTypes={[
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'image/jpeg',
-            'image/png'
-          ]}
+          allowedTypes={['application/pdf']}
           maxSize={5 * 1024 * 1024}
           maxFiles={5}
           buttonText="Upload Documents"
@@ -192,7 +180,7 @@ const UploadDocuments = () => {
         
         {documents.length === 0 ? (
           <div className="empty-documents">
-            <div className="empty-icon">📁</div>
+            <div className="empty-icon"></div>
             <h3>No documents uploaded yet</h3>
             <p>Upload your documents to start applying for jobs</p>
           </div>
@@ -247,7 +235,6 @@ const UploadDocuments = () => {
         <div className="types-grid">
           {documentTypes.map(type => (
             <div key={type.value} className="type-card">
-              <div className="type-icon">{type.icon}</div>
               <h4>{type.label}</h4>
               <p>
                 {type.value === 'transcript' && 'Official academic records from your institution'}

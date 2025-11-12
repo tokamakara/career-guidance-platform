@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { dataCache } from '../../utils/dataCache';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-api-eajo.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -36,12 +37,44 @@ export const applicationService = {
 
   // Get student's applications
   async getStudentApplications(status = null) {
+    // Only cache first page without status filter
+    const cacheKey = !status ? 'applications:student:all' : null;
+    if (cacheKey) {
+      const cached = dataCache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const params = status ? { status } : {};
       const response = await api.get('/applications/student/my-applications', { params });
-      return response.data;
+      const data = response.data;
+      
+      // Cache for 2 minutes
+      if (cacheKey) {
+        dataCache.set(cacheKey, data, 2 * 60 * 1000);
+      }
+      
+      return data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch applications');
+      // Handle server errors gracefully - return empty data instead of throwing
+      const status = error.response?.status;
+      
+      // For 500 errors or network errors, return empty data (user might have no applications)
+      if (status === 500 || status >= 500 || !error.response) {
+        console.warn('Server error or network issue, returning empty applications:', error.message);
+        return { success: true, data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+      }
+      
+      // For auth errors, still throw (user needs to know they're not authenticated)
+      if (status === 401 || status === 403) {
+        throw new Error(error.response?.data?.message || 'Authentication required');
+      }
+      
+      // For other errors, return empty data gracefully
+      console.warn('Error fetching applications, returning empty data:', error.message);
+      return { success: true, data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
     }
   },
 

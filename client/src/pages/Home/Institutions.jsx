@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Navbar from '../../components/common/Navbar/Navbar';
 import { institutionService } from '../../services/api/instituteService';
 import './Institutions.css';
 
@@ -59,6 +60,7 @@ const Institutions = () => {
   if (loading) {
     return (
       <div className="institutions-loading">
+        <Navbar />
         <div className="loading-spinner"></div>
         <p>Loading institutions...</p>
       </div>
@@ -67,6 +69,7 @@ const Institutions = () => {
 
   return (
     <div className="institutions-page">
+      <Navbar />
       <div className="institutions-hero">
         <div className="container">
           <h1>Higher Learning Institutions in Lesotho</h1>
@@ -194,7 +197,7 @@ const Institutions = () => {
             </p>
             <div className="cta-buttons">
               <a href="/register?role=institute" className="cta-button primary">
-                Register Your Institution
+                Sign Up Your Institution
               </a>
               <a href="/contact" className="cta-button secondary">
                 Learn More

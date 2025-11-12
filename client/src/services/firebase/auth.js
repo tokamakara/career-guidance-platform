@@ -5,7 +5,10 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile as updateAuthProfile,
-  onAuthStateChanged
+  onAuthStateChanged,
+  getIdToken,
+  signInWithPopup,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from './index';
@@ -83,6 +86,10 @@ export const authService = {
       // Save to Firestore
       await setDoc(doc(db, 'users', user.uid), userProfile);
 
+      // Get and store Firebase ID token for API authentication
+      const idToken = await getIdToken(user);
+      localStorage.setItem('authToken', idToken);
+
       // If institution or company, also create in their respective collections
       if (role === 'institute') {
         const institutionData = {
@@ -149,9 +156,68 @@ export const authService = {
         throw new Error('Your account has been suspended. Please contact admin.');
       }
 
+      // Get and store Firebase ID token for API authentication
+      const idToken = await getIdToken(user);
+      localStorage.setItem('authToken', idToken);
+
       return { success: true, user };
     } catch (error) {
       console.error('Login error:', error);
+      throw new Error(this.getFriendlyErrorMessage(error.code));
+    }
+  },
+
+  // Login with Google
+  async loginWithGoogle() {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Get user profile to check if it exists
+      let userProfile = await this.getUserProfile(user.uid).catch(() => null);
+      
+      // If user doesn't exist, create a basic profile
+      if (!userProfile) {
+        const displayName = user.displayName || '';
+        const nameParts = displayName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        userProfile = {
+          uid: user.uid,
+          email: user.email,
+          firstName,
+          lastName,
+          role: 'student', // Default role for Google sign-in
+          status: 'active',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          emailVerified: user.emailVerified
+        };
+        
+        // Save to Firestore
+        await setDoc(doc(db, 'users', user.uid), userProfile);
+      }
+      
+      // Check status
+      if (userProfile.status === 'pending') {
+        await signOut(auth);
+        throw new Error('Your account is pending approval. Please wait for admin approval.');
+      }
+      
+      if (userProfile.status === 'suspended') {
+        await signOut(auth);
+        throw new Error('Your account has been suspended. Please contact admin.');
+      }
+
+      // Get and store Firebase ID token for API authentication
+      const idToken = await getIdToken(user);
+      localStorage.setItem('authToken', idToken);
+
+      return { success: true, user };
+    } catch (error) {
+      console.error('Google login error:', error);
       throw new Error(this.getFriendlyErrorMessage(error.code));
     }
   },
@@ -160,6 +226,9 @@ export const authService = {
   async logout() {
     try {
       await signOut(auth);
+      // Clear stored token
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userProfile');
       return { success: true };
     } catch (error) {
       console.error('Logout error:', error);
@@ -233,11 +302,19 @@ export const authService = {
       'auth/operation-not-allowed': 'Email/password accounts are not enabled. Please contact support.',
       'auth/weak-password': 'Password should be at least 6 characters long.',
       'auth/user-disabled': 'This account has been disabled. Please contact support.',
-      'auth/user-not-found': 'No account found with this email address.',
-      'auth/wrong-password': 'Incorrect password. Please try again.',
+      'auth/user-not-found': 'User does not exist. Please register to create an account.',
+      'auth/wrong-password': 'Wrong password. Please try again or reset your password.',
+      'auth/invalid-credential': 'Wrong password or user does not exist. Please check your credentials or register.',
+      'auth/invalid-login-credentials': 'Wrong password or user does not exist. Please check your credentials or register.',
       'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
       'auth/network-request-failed': 'Network error. Please check your connection and try again.'
     };
+
+    // For newer Firebase versions, invalid-credential can mean either wrong password or user not found
+    // We'll provide a combined message
+    if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/invalid-login-credentials') {
+      return 'Wrong password or user does not exist. Please check your credentials or register.';
+    }
 
     return errorMessages[errorCode] || 'An unexpected error occurred. Please try again.';
   }

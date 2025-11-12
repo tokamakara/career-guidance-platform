@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../context/NotificationContext';
 import './NotificationBell.css';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();
   const dropdownRef = useRef(null);
 
@@ -11,6 +12,7 @@ const NotificationBell = () => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setShowAll(false); // Reset showAll when closing dropdown
       }
     };
 
@@ -35,8 +37,38 @@ const NotificationBell = () => {
   };
 
   const formatTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    
+    let date;
+    
+    // Handle different timestamp formats
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      // Firestore Timestamp object
+      date = timestamp.toDate();
+    } else if (timestamp instanceof Date) {
+      // Already a Date object
+      date = timestamp;
+    } else if (typeof timestamp === 'string') {
+      // String timestamp
+      date = new Date(timestamp);
+    } else if (typeof timestamp === 'number') {
+      // Number timestamp (milliseconds)
+      date = new Date(timestamp);
+    } else if (timestamp.seconds) {
+      // Firestore Timestamp with seconds property
+      date = new Date(timestamp.seconds * 1000);
+    } else {
+      // Fallback: try to create Date from the value
+      date = new Date(timestamp);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Just now';
+    }
+    
     const now = new Date();
-    const diff = now - timestamp.toDate();
+    const diff = now - date;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -44,7 +76,14 @@ const NotificationBell = () => {
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+    if (days < 7) return `${days}d ago`;
+    
+    // For older notifications, show the actual date
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   return (
@@ -79,7 +118,7 @@ const NotificationBell = () => {
                 <p>No notifications</p>
               </div>
             ) : (
-              notifications.slice(0, 10).map(notification => (
+              (showAll ? notifications : notifications.slice(0, 10)).map(notification => (
                 <div
                   key={notification.id}
                   className={`notification-item ${notification.read ? 'read' : 'unread'}`}
@@ -100,9 +139,28 @@ const NotificationBell = () => {
             )}
           </div>
 
-          {notifications.length > 10 && (
+          {notifications.length > 10 && !showAll && (
             <div className="notification-footer">
-              <button className="view-all">View All Notifications</button>
+              <button 
+                className="view-all"
+                onClick={() => {
+                  setShowAll(true);
+                }}
+              >
+                View All Notifications ({notifications.length})
+              </button>
+            </div>
+          )}
+          {showAll && notifications.length > 10 && (
+            <div className="notification-footer">
+              <button 
+                className="view-all"
+                onClick={() => {
+                  setShowAll(false);
+                }}
+              >
+                Show Less
+              </button>
             </div>
           )}
         </div>

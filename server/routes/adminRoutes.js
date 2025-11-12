@@ -12,4 +12,18 @@ router.put('/reactivate/:userId', authenticateToken, requireRole(['admin']), adm
 router.delete('/users/:userId', authenticateToken, requireRole(['admin']), adminController.deleteUser);
 router.get('/reports', authenticateToken, requireRole(['admin']), adminController.getReports);
 
+// Applications Overview
+router.get('/applications/institute', authenticateToken, requireRole(['admin']), adminController.getInstituteApplications);
+router.get('/applications/company', authenticateToken, requireRole(['admin']), adminController.getCompanyApplications);
+router.get('/applications/combined', authenticateToken, requireRole(['admin']), adminController.getCombinedApplications);
+
+// Analytics & Reports
+router.get('/analytics/institute', authenticateToken, requireRole(['admin']), adminController.getInstituteAnalytics);
+router.get('/analytics/company', authenticateToken, requireRole(['admin']), adminController.getCompanyAnalytics);
+router.get('/analytics/combined', authenticateToken, requireRole(['admin']), adminController.getCombinedAnalytics);
+
+// PDF Exports
+router.get('/export/company/:companyId/admitted', authenticateToken, requireRole(['admin']), adminController.exportCompanyAdmittedCandidates);
+router.get('/export/institute/:institutionId/admitted', authenticateToken, requireRole(['admin']), adminController.exportInstituteAdmittedStudents);
+
 module.exports = router;

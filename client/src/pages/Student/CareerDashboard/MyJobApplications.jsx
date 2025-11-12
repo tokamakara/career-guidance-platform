@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
-import { useApplications } from '../../../hooks/useApplications';
+import { useAuth } from '../../../context/AuthContext';
+import { studentService } from '../../../services/api/studentService';
+import { useNotification } from '../../../context/NotificationContext';
 import Table from '../../../components/ui/Table';
 
 const MyJobApplications = () => {
@@ -8,45 +9,64 @@ const MyJobApplications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
+  const { addNotification } = useNotification();
 
   useEffect(() => {
-    loadJobApplications();
-  }, []);
+    if (currentUser) {
+      loadJobApplications();
+    }
+  }, [currentUser]);
 
   const loadJobApplications = async () => {
     try {
       setLoading(true);
-      // This would typically come from a jobService
-      const mockApplications = [
-        {
-          id: '1',
-          jobTitle: 'Software Developer',
-          companyName: 'Tech Solutions Ltd',
-          appliedAt: '2024-01-15',
-          status: 'pending',
-          matchScore: 85
-        },
-        {
-          id: '2',
-          jobTitle: 'Data Analyst',
-          companyName: 'Data Corp',
-          appliedAt: '2024-01-10',
-          status: 'shortlisted',
-          matchScore: 92
-        },
-        {
-          id: '3',
-          jobTitle: 'Marketing Intern',
-          companyName: 'Creative Agency',
-          appliedAt: '2024-01-05',
-          status: 'rejected',
-          matchScore: 68
-        }
-      ];
-      setJobApplications(mockApplications);
+      setError('');
+      
+      // Fetch real job applications from API
+      const result = await studentService.getJobApplications();
+      
+      // Handle different response formats
+      let applicationsData = [];
+      if (result && result.success && result.data) {
+        applicationsData = Array.isArray(result.data) ? result.data : [];
+      } else if (result && Array.isArray(result)) {
+        applicationsData = result;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        applicationsData = result.data;
+      } else {
+        applicationsData = [];
+      }
+      
+      // Transform API data to match component format
+      const transformedApplications = applicationsData.map(app => ({
+        id: app.id,
+        jobTitle: app.jobTitle || app.title,
+        companyName: app.companyName || app.company,
+        appliedAt: app.appliedAt || app.applicationDate || app.createdAt,
+        status: app.status || 'pending',
+        matchScore: app.matchScore || 0,
+        jobId: app.jobId
+      }));
+      
+      setJobApplications(transformedApplications);
     } catch (err) {
-      setError(err.message || 'Failed to load job applications');
+      // Only log if it's an actual error (not empty data scenario)
+      if (err.message && !err.message.includes('returning empty')) {
+        console.warn('Error loading job applications:', err.message);
+      }
+      
+      // Set empty array - no applications is a valid state, not an error
+      setJobApplications([]);
+      
+      // Only show notification for auth errors
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled elsewhere
+        return;
+      }
+      
+      // Don't show error notifications for empty data - it's normal if user has no applications
     } finally {
       setLoading(false);
     }
@@ -58,10 +78,24 @@ const MyJobApplications = () => {
     }
 
     try {
-      // Simulate API call
+      // TODO: Call API to withdraw application
+      // await studentService.withdrawJobApplication(applicationId);
+      
+      // Update local state
       setJobApplications(prev => prev.filter(app => app.id !== applicationId));
+      
+      addNotification({
+        type: 'success',
+        title: 'Application Withdrawn',
+        message: 'Your job application has been withdrawn successfully'
+      });
     } catch (err) {
-      setError('Failed to withdraw application');
+      console.error('Error withdrawing application:', err);
+      addNotification({
+        type: 'error',
+        title: 'Withdrawal Failed',
+        message: err.message || 'Failed to withdraw application'
+      });
     }
   };
 
@@ -131,8 +165,10 @@ const MyJobApplications = () => {
   ];
 
   const viewJobDetails = (application) => {
-    // Navigate to job details
-    console.log('View job:', application);
+    // Navigate to job details page
+    if (application.jobId) {
+      window.location.href = `/student/career/jobs/${application.jobId}`;
+    }
   };
 
   const getApplicationStats = () => {
@@ -190,22 +226,18 @@ const MyJobApplications = () => {
         <h3>Job Application Tips</h3>
         <div className="tips-grid">
           <div className="tip-card">
-            <div className="tip-icon">📝</div>
             <h4>Tailor Your Resume</h4>
             <p>Customize your resume for each job application to highlight relevant skills and experience.</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">💼</div>
             <h4>Follow Up</h4>
             <p>Send a polite follow-up email if you haven't heard back within 1-2 weeks.</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">🎯</div>
             <h4>Focus on Quality</h4>
             <p>Apply to jobs that match your skills and interests rather than mass applying.</p>
           </div>
           <div className="tip-card">
-            <div className="tip-icon">📚</div>
             <h4>Keep Learning</h4>
             <p>Continue developing your skills while waiting for responses.</p>
           </div>

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/common/ProtectedRoute';
+import { useAuth } from '../context/AuthContext';
+import Loader from '../components/common/Loader';
 
 // Auth Pages
 import Login from '../pages/Auth/Login';
@@ -13,6 +15,9 @@ import HomePage from '../pages/Home/HomePage';
 import About from '../pages/Home/About';
 import Contact from '../pages/Home/Contact';
 import Institutions from '../pages/Home/Institutions';
+import PrivacyPolicy from '../pages/Home/PrivacyPolicy';
+import TermsOfService from '../pages/Home/TermsOfService';
+import FAQ from '../pages/Home/FAQ';
 
 // Admin Pages
 import AdminDashboard from '../pages/Admin/Dashboard';
@@ -20,6 +25,8 @@ import ManageInstitutions from '../pages/Admin/ManageInstitutions';
 import ManageCompanies from '../pages/Admin/ManageCompanies';
 import Reports from '../pages/Admin/Reports';
 import AdmissionsMonitor from '../pages/Admin/AdmissionsMonitor';
+import ApplicationsOverview from '../pages/Admin/ApplicationsOverview';
+import Analytics from '../pages/Admin/Analytics';
 
 // Institute Pages
 import InstituteDashboard from '../pages/Institute/Dashboard';
@@ -40,7 +47,11 @@ import CareerDashboard from '../pages/Student/CareerDashboard/Dashboard';
 import JobListings from '../pages/Student/CareerDashboard/JobListings';
 import MyJobApplications from '../pages/Student/CareerDashboard/MyJobApplications';
 import UploadDocuments from '../pages/Student/CareerDashboard/UploadDocuments';
-import StudentProfile from '../pages/Student/Shared/Settings';
+const StudentProfile = React.lazy(() => import('../pages/Student/EducationDashboard/Profile'));
+const StudentSettings = React.lazy(() => import('../pages/Student/Shared/Settings'));
+
+// Layouts
+import StudentLayout from '../layouts/StudentLayout';
 
 // Company Pages
 import CompanyDashboard from '../pages/Company/Dashboard';
@@ -52,6 +63,50 @@ import CompanyProfile from '../pages/Company/Profile';
 // Error Pages
 import ErrorPage from '../pages/ErrorPage';
 
+// Component to redirect to role-specific profile
+const ProfileRedirect = () => {
+  const { userProfile } = useAuth();
+  
+  if (!userProfile) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  switch (userProfile.role) {
+    case 'student':
+      return <Navigate to="/student/profile" replace />;
+    case 'institute':
+      return <Navigate to="/institute/profile" replace />;
+    case 'company':
+      return <Navigate to="/company/profile" replace />;
+    case 'admin':
+      return <Navigate to="/admin/dashboard" replace />;
+    default:
+      return <Navigate to="/" replace />;
+  }
+};
+
+// Component to redirect to role-specific settings
+const SettingsRedirect = () => {
+  const { userProfile } = useAuth();
+  
+  if (!userProfile) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  switch (userProfile.role) {
+    case 'student':
+      return <Navigate to="/student/settings" replace />;
+    case 'institute':
+      return <Navigate to="/institute/profile" replace />;
+    case 'company':
+      return <Navigate to="/company/profile" replace />;
+    case 'admin':
+      return <Navigate to="/admin/dashboard" replace />;
+    default:
+      return <Navigate to="/" replace />;
+  }
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -60,6 +115,9 @@ const AppRoutes = () => {
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/institutions" element={<Institutions />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/faq" element={<FAQ />} />
       
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
@@ -105,6 +163,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="admin">
             <AdmissionsMonitor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/applications-overview"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <ApplicationsOverview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/analytics"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <Analytics />
           </ProtectedRoute>
         }
       />
@@ -164,7 +238,9 @@ const AppRoutes = () => {
         path="/student/dashboard"
         element={
           <ProtectedRoute requiredRole="student">
-            <StudentDashboardHome />
+            <StudentLayout>
+              <StudentDashboardHome />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -174,7 +250,9 @@ const AppRoutes = () => {
         path="/student/education"
         element={
           <ProtectedRoute requiredRole="student">
-            <EducationDashboard />
+            <StudentLayout>
+              <EducationDashboard />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -182,7 +260,9 @@ const AppRoutes = () => {
         path="/student/education/institutions"
         element={
           <ProtectedRoute requiredRole="student">
-            <BrowseInstitutions />
+            <StudentLayout>
+              <BrowseInstitutions />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -190,7 +270,9 @@ const AppRoutes = () => {
         path="/student/education/apply"
         element={
           <ProtectedRoute requiredRole="student">
-            <ApplyInstitutions />
+            <StudentLayout>
+              <ApplyInstitutions />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -198,7 +280,9 @@ const AppRoutes = () => {
         path="/student/education/applications"
         element={
           <ProtectedRoute requiredRole="student">
-            <MyApplications />
+            <StudentLayout>
+              <MyApplications />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -206,7 +290,9 @@ const AppRoutes = () => {
         path="/student/education/results"
         element={
           <ProtectedRoute requiredRole="student">
-            <AdmissionResults />
+            <StudentLayout>
+              <AdmissionResults />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -216,7 +302,9 @@ const AppRoutes = () => {
         path="/student/career"
         element={
           <ProtectedRoute requiredRole="student">
-            <CareerDashboard />
+            <StudentLayout>
+              <CareerDashboard />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -224,7 +312,9 @@ const AppRoutes = () => {
         path="/student/career/jobs"
         element={
           <ProtectedRoute requiredRole="student">
-            <JobListings />
+            <StudentLayout>
+              <JobListings />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -232,7 +322,9 @@ const AppRoutes = () => {
         path="/student/career/applications"
         element={
           <ProtectedRoute requiredRole="student">
-            <MyJobApplications />
+            <StudentLayout>
+              <MyJobApplications />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -240,7 +332,9 @@ const AppRoutes = () => {
         path="/student/career/documents"
         element={
           <ProtectedRoute requiredRole="student">
-            <UploadDocuments />
+            <StudentLayout>
+              <UploadDocuments />
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -248,7 +342,23 @@ const AppRoutes = () => {
         path="/student/profile"
         element={
           <ProtectedRoute requiredRole="student">
-            <StudentProfile />
+            <StudentLayout>
+              <Suspense fallback={<Loader />}>
+                <StudentProfile />
+              </Suspense>
+            </StudentLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/settings"
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentLayout>
+              <Suspense fallback={<Loader />}>
+                <StudentSettings />
+              </Suspense>
+            </StudentLayout>
           </ProtectedRoute>
         }
       />
@@ -291,6 +401,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="company">
             <CompanyProfile />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Generic Profile and Settings Routes - Redirect based on role */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfileRedirect />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsRedirect />
           </ProtectedRoute>
         }
       />

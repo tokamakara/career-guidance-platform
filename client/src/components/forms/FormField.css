@@ -32,7 +32,7 @@
 
 .form-field:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #dc3545;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -80,7 +80,7 @@ select.form-field {
   width: auto;
   margin-right: 8px;
   transform: scale(1.2);
-  accent-color: #667eea;
+  accent-color: #dc3545;
   vertical-align: middle;
 }
 

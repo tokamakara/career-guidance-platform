@@ -37,13 +37,13 @@
 }
 
 .filter-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #dc3545;
+  color: #dc3545;
 }
 
 .filter-btn.active {
-  background: #667eea;
-  border-color: #667eea;
+  background: #dc3545;
+  border-color: #dc3545;
   color: white;
 }
 

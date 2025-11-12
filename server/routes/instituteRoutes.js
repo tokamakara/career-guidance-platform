@@ -21,6 +21,18 @@ router.get(
   instituteController.getFacultyCourses
 );
 
+router.get(
+  '/institutions/all',
+  instituteController.getAllInstitutionsWithCourses
+);
+
+router.get(
+  '/courses/qualified',
+  authenticateToken,
+  requireRole(['student']),
+  instituteController.getQualifiedCourses
+);
+
 // Institute-specific routes (require institute role)
 router.post(
   '/faculties',
@@ -48,6 +60,29 @@ router.patch(
   authenticateToken,
   requireRole(['institute']),
   applicationController.updateApplicationStatus
+);
+
+// Institute profile routes
+router.get(
+  '/profile',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.getInstituteProfile
+);
+
+router.put(
+  '/profile',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.updateInstituteProfile
+);
+
+// PDF Export
+router.get(
+  '/export/admitted/:courseId?',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.exportAdmittedStudents
 );
 
 module.exports = router;

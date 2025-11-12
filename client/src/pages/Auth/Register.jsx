@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { validateForm, validationSchemas, validators } from '../../utils/validators';
+import Navbar from '../../components/common/Navbar/Navbar';
 import './Auth.css';
 
 const Register = () => {
@@ -12,7 +13,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student',
+    role: '',
     // Role-specific fields
     institutionName: '',
     institutionType: 'university',
@@ -29,6 +30,51 @@ const Register = () => {
   const { register } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
+
+  // Prevent invalid characters from being typed in name fields
+  const handleNameKeyPress = (e) => {
+    const char = e.key;
+    // Allow: letters, spaces, hyphens, apostrophes, and backspace/delete/arrow keys
+    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter'];
+    
+    if (allowedKeys.includes(char)) {
+      return; // Allow control keys
+    }
+    
+    // Only allow letters, spaces, hyphens, and apostrophes
+    if (!/^[A-Za-zÀ-ÿ\s'-]$/.test(char)) {
+      e.preventDefault(); // Block invalid characters
+    }
+  };
+
+  // Prevent invalid characters in name fields
+  const handleNameInput = (e) => {
+    const { name, value } = e.target;
+    
+    // Only allow letters, spaces, hyphens, and apostrophes for name fields
+    if (name === 'firstName' || name === 'lastName') {
+      // Remove any characters that are not letters, spaces, hyphens, or apostrophes
+      const sanitizedValue = value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, '');
+      
+      // Prevent consecutive special characters
+      const cleanedValue = sanitizedValue.replace(/(\-\-)|(\'\')|(\s\s)/g, (match) => {
+        return match[0];
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: cleanedValue
+      }));
+      
+      // Clear error when user starts typing
+      if (errors[name]) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: ''
+        }));
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -63,7 +109,16 @@ const Register = () => {
     if (step === 1) {
       const step1Fields = ['firstName', 'lastName', 'email', 'role'];
       if (step1Fields.includes(fieldName)) {
-        validationRule = validationSchemas.register[fieldName];
+        if (fieldName === 'role') {
+          validationRule = [(value) => {
+            if (!value || value.toString().trim() === '') {
+              return 'Role is required';
+            }
+            return null;
+          }];
+        } else {
+          validationRule = validationSchemas.register[fieldName];
+        }
       }
     } else {
       // Step 2 validation
@@ -101,7 +156,12 @@ const Register = () => {
       firstName: validationSchemas.register.firstName,
       lastName: validationSchemas.register.lastName,
       email: validationSchemas.register.email,
-      role: validationSchemas.register.role
+      role: [(value) => {
+        if (!value || value.toString().trim() === '') {
+          return 'Role is required';
+        }
+        return null;
+      }]
     });
 
     setErrors(newErrors);
@@ -328,15 +388,15 @@ const Register = () => {
       await register(formData);
       addNotification({
         type: 'success',
-        title: 'Registration Successful',
+        title: 'Sign Up Successful',
         message: 'Please check your email for verification. Your account will be activated after admin approval if required.'
       });
       navigate('/login');
     } catch (error) {
       addNotification({
         type: 'error',
-        title: 'Registration Failed',
-        message: error.message || 'Registration failed. Please try again.'
+        title: 'Sign Up Failed',
+        message: error.message || 'Sign up failed. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -345,17 +405,13 @@ const Register = () => {
 
   return (
     <div className="auth-container">
+      <Navbar />
       <div className="auth-card">
         <div className="auth-header">
           <h2>Create Account</h2>
           <p>Join the Career Guidance Platform</p>
         </div>
 
-        <div className="step-indicator">
-          <div className={`step ${step >= 1 ? 'active' : ''}`}>1</div>
-          <div className="step-line"></div>
-          <div className={`step ${step >= 2 ? 'active' : ''}`}>2</div>
-        </div>
 
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           {step === 1 && (
@@ -368,11 +424,14 @@ const Register = () => {
                     id="firstName"
                     name="firstName"
                     value={formData.firstName}
-                    onChange={handleChange}
+                    onChange={handleNameInput}
+                    onKeyPress={handleNameKeyPress}
                     onBlur={handleBlur}
                     placeholder="Enter your first name"
                     className={getFieldError('firstName') ? 'error' : ''}
                     disabled={loading}
+                    pattern="[A-Za-zÀ-ÿ\s'-]+"
+                    title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('firstName') && (
                     <span className="error-text">{errors.firstName}</span>
@@ -385,11 +444,14 @@ const Register = () => {
                     id="lastName"
                     name="lastName"
                     value={formData.lastName}
-                    onChange={handleChange}
+                    onChange={handleNameInput}
+                    onKeyPress={handleNameKeyPress}
                     onBlur={handleBlur}
                     placeholder="Enter your last name"
                     className={getFieldError('lastName') ? 'error' : ''}
                     disabled={loading}
+                    pattern="[A-Za-zÀ-ÿ\s'-]+"
+                    title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('lastName') && (
                     <span className="error-text">{errors.lastName}</span>
@@ -416,18 +478,24 @@ const Register = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="role">I am a *</label>
+                <label htmlFor="role">Role *</label>
                 <select
                   id="role"
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={getFieldError('role') ? 'error' : ''}
                   disabled={loading}
                 >
+                  <option value="">Select a role</option>
                   <option value="student">Student</option>
-                  <option value="institute">Educational Institute</option>
-                  <option value="company">Company/Employer</option>
+                  <option value="institute">Institute</option>
+                  <option value="company">Company</option>
                 </select>
+                {getFieldError('role') && (
+                  <span className="error-text">{errors.role}</span>
+                )}
               </div>
 
               <button 

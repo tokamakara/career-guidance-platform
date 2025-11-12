@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-api-eajo.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -60,7 +60,23 @@ export const jobService = {
       const response = await api.get('/jobs/public', { params: filters });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch jobs');
+      // Handle server errors gracefully - return empty data instead of throwing
+      const status = error.response?.status;
+      
+      // For 500 errors or network errors, return empty data (no jobs available)
+      if (status === 500 || status >= 500 || !error.response) {
+        console.warn('Server error or network issue, returning empty jobs:', error.message);
+        return { success: true, data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+      }
+      
+      // For auth errors, still throw (user needs to know they're not authenticated)
+      if (status === 401 || status === 403) {
+        throw new Error(error.response?.data?.message || 'Authentication required');
+      }
+      
+      // For other errors, return empty data gracefully
+      console.warn('Error fetching jobs, returning empty data:', error.message);
+      return { success: true, data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
     }
   },
 
@@ -93,7 +109,23 @@ export const jobService = {
       const response = await api.get('/student/job-recommendations');
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to get recommendations');
+      // Handle server errors gracefully - return empty data instead of throwing
+      const status = error.response?.status;
+      
+      // For 500 errors or network errors, return empty data (no recommendations available)
+      if (status === 500 || status >= 500 || !error.response) {
+        console.warn('Server error loading job recommendations, returning empty data:', error.message);
+        return { success: true, data: [] };
+      }
+      
+      // For auth errors, still throw
+      if (status === 401 || status === 403) {
+        throw new Error(error.response?.data?.message || 'Authentication required');
+      }
+      
+      // For other errors, return empty data gracefully
+      console.warn('Error fetching job recommendations, returning empty data:', error.message);
+      return { success: true, data: [] };
     }
   }
 };

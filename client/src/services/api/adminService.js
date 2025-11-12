@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'https://career-guidance-api-eajo.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -27,7 +27,7 @@ export const adminService = {
   // Get dashboard statistics
   async getDashboardStats() {
     try {
-      const response = await api.get('/admin/dashboard/stats');
+      const response = await api.get('/admin/dashboard');
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
@@ -128,13 +128,123 @@ export const adminService = {
   },
 
   // Get system reports
-  async getSystemReports(reportType, dateRange = {}) {
+  async getReports(reportType, dateRange = {}) {
     try {
-      const params = { reportType, ...dateRange };
+      const params = { type: reportType, ...dateRange };
       const response = await api.get('/admin/reports', { params });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch reports');
+    }
+  },
+
+  // Get Applications Overview - Institute Applications
+  async getInstituteApplications(filters = {}) {
+    try {
+      const response = await api.get('/admin/applications/institute', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch institute applications');
+    }
+  },
+
+  // Get Applications Overview - Company Applications
+  async getCompanyApplications(filters = {}) {
+    try {
+      const response = await api.get('/admin/applications/company', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch company applications');
+    }
+  },
+
+  // Get Applications Overview - Combined Applications
+  async getCombinedApplications(filters = {}) {
+    try {
+      const response = await api.get('/admin/applications/combined', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch combined applications');
+    }
+  },
+
+  // Get Analytics & Reports - Institute Analytics
+  async getInstituteAnalytics(filters = {}) {
+    try {
+      const response = await api.get('/admin/analytics/institute', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch institute analytics');
+    }
+  },
+
+  // Get Analytics & Reports - Company Analytics
+  async getCompanyAnalytics(filters = {}) {
+    try {
+      const response = await api.get('/admin/analytics/company', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch company analytics');
+    }
+  },
+
+  // Get Analytics & Reports - Combined Analytics
+  async getCombinedAnalytics(filters = {}) {
+    try {
+      const response = await api.get('/admin/analytics/combined', { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch combined analytics');
+    }
+  },
+
+  // Export Company Admitted Candidates (PDF)
+  async exportCompanyAdmittedCandidates(companyId, jobId = null) {
+    try {
+      const url = jobId 
+        ? `/admin/export/company/${companyId}/admitted?jobId=${jobId}`
+        : `/admin/export/company/${companyId}/admitted`;
+      const response = await api.get(url, { responseType: 'blob' });
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.download = `admitted-candidates-${companyId}-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+      
+      return { success: true };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to export admitted candidates');
+    }
+  },
+
+  // Export Institute Admitted Students (PDF)
+  async exportInstituteAdmittedStudents(institutionId, courseId = null) {
+    try {
+      const url = courseId 
+        ? `/admin/export/institute/${institutionId}/admitted?courseId=${courseId}`
+        : `/admin/export/institute/${institutionId}/admitted`;
+      const response = await api.get(url, { responseType: 'blob' });
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const urlBlob = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.download = `admitted-students-${institutionId}-${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(urlBlob);
+      
+      return { success: true };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to export admitted students');
     }
   },
 

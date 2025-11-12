@@ -12,6 +12,8 @@ const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const { addNotification } = useNotification();
+
   useEffect(() => {
     loadReports();
   }, [selectedReport, dateRange]);
@@ -19,10 +21,16 @@ const Reports = () => {
   const loadReports = async () => {
     try {
       setLoading(true);
+      setError('');
       const reportsData = await adminService.getReports(selectedReport, dateRange);
       setReports(reportsData);
     } catch (err) {
       setError(err.message || 'Failed to load reports');
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: err.message || 'Failed to load reports'
+      });
     } finally {
       setLoading(false);
     }
@@ -65,26 +73,62 @@ const Reports = () => {
     }
   };
 
-  const exportToCSV = () => {
-    // Simple CSV export implementation
-    const data = reports.data || [];
-    if (data.length === 0) return;
+  const handleExportCSV = () => {
+    try {
+      const data = reports.data || [];
+      if (data.length === 0) {
+        addNotification({
+          type: 'warning',
+          title: 'No Data',
+          message: 'No data to export'
+        });
+        return;
+      }
 
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => 
-      Object.values(row).map(value => 
-        `"${String(value).replace(/"/g, '""')}"`
-      ).join(',')
-    ).join('\n');
+      const filename = `${selectedReport}_report_${formatDateRangeForFilename(dateRange.start, dateRange.end)}`;
+      exportToCSV(data, filename, getColumns());
+      
+      addNotification({
+        type: 'success',
+        title: 'Export Successful',
+        message: 'Report exported to CSV successfully'
+      });
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Export Failed',
+        message: error.message || 'Failed to export report'
+      });
+    }
+  };
 
-    const csvContent = `${headers}\n${rows}`;
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${selectedReport}_report_${dateRange.start}_to_${dateRange.end}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleExportExcel = () => {
+    try {
+      const data = reports.data || [];
+      if (data.length === 0) {
+        addNotification({
+          type: 'warning',
+          title: 'No Data',
+          message: 'No data to export'
+        });
+        return;
+      }
+
+      const filename = `${selectedReport}_report_${formatDateRangeForFilename(dateRange.start, dateRange.end)}`;
+      exportToExcel(data, filename, getColumns());
+      
+      addNotification({
+        type: 'success',
+        title: 'Export Successful',
+        message: 'Report exported to Excel successfully'
+      });
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        title: 'Export Failed',
+        message: error.message || 'Failed to export report'
+      });
+    }
   };
 
   return (
@@ -129,9 +173,14 @@ const Reports = () => {
           />
         </div>
 
-        <button onClick={exportToCSV} className="export-button">
-          Export CSV
-        </button>
+        <div className="export-buttons">
+          <button onClick={handleExportCSV} className="export-button btn-export-csv" disabled={loading || !reports.data || reports.data.length === 0}>
+            Export CSV
+          </button>
+          <button onClick={handleExportExcel} className="export-button btn-export-excel" disabled={loading || !reports.data || reports.data.length === 0}>
+            Export Excel
+          </button>
+        </div>
       </div>
 
       <div className="report-summary">

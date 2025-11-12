@@ -23,18 +23,18 @@
 
 .form-section h3 {
   margin-bottom: 20px;
-  color: #333;
+  color: #0f172a;
   font-size: 1.3rem;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #2563eb;
   padding-bottom: 10px;
 }
 
 .course-details {
-  background: #f8f9fa;
+  background: #f8fafc;
   padding: 20px;
   border-radius: 8px;
   margin-bottom: 25px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #2563eb;
 }
 
 .course-details h4 {
@@ -63,7 +63,7 @@
 }
 
 .detail-item span {
-  color: #666;
+  color: #475569;
   text-align: right;
 }
 
@@ -73,7 +73,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #2563eb;
   color: white;
   padding: 12px 30px;
   border: none;
@@ -87,7 +87,7 @@
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
 }
 
 .btn-primary:disabled {
@@ -106,7 +106,7 @@
 
 .application-info h3 {
   margin-bottom: 20px;
-  color: #333;
+  color: #0f172a;
   text-align: center;
 }
 
@@ -117,10 +117,10 @@
 }
 
 .info-card {
-  background: #f8f9fa;
+  background: #f8fafc;
   padding: 15px;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #2563eb;
 }
 
 .info-icon {
@@ -130,13 +130,13 @@
 
 .info-card h4 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: #0f172a;
   font-size: 0.9rem;
 }
 
 .info-card p {
   margin: 0;
-  color: #666;
+  color: #475569;
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -180,11 +180,11 @@
 
 .subjects-form h3 {
   margin-bottom: 15px;
-  color: #333;
+  color: #0f172a;
 }
 
 .subjects-form p {
-  color: #666;
+  color: #475569;
   margin-bottom: 20px;
 }
 
@@ -206,7 +206,7 @@
 }
 
 .subject-input:hover {
-  border-color: #667eea;
+  border-color: #2563eb;
 }
 
 .subject-checkbox {
@@ -232,7 +232,7 @@
 
 .grade-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #2563eb;
 }
 
 .subjects-actions {
@@ -252,13 +252,13 @@
 }
 
 .requirement.met {
-  background: #d1edff;
-  color: #155724;
+  background: #e0f2fe;
+  color: #0f766e;
 }
 
 .requirement.not-met {
-  background: #f8d7da;
-  color: #721c24;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .subjects-summary {
@@ -270,7 +270,7 @@
 
 .subjects-summary h4 {
   margin-bottom: 10px;
-  color: #333;
+  color: #0f172a;
 }
 
 .subjects-list {
@@ -321,8 +321,8 @@
 }
 
 .qualified-badge {
-  color: #155724;
-  background: #d1edff;
+  color: #0f766e;
+  background: #e0f2fe;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -330,8 +330,8 @@
 }
 
 .not-qualified-badge {
-  color: #721c24;
-  background: #f8d7da;
+  color: #991b1b;
+  background: #fee2e2;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.8rem;

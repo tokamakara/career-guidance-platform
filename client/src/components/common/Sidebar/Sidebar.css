@@ -36,13 +36,13 @@
 
 .sidebar-link:hover {
   background: #f8f9fa;
-  color: #667eea;
+  color: #dc3545;
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #dc3545;
   color: white;
-  border-left-color: #667eea;
+  border-left-color: #dc3545;
 }
 
 .sidebar-icon {

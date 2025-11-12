@@ -30,14 +30,37 @@ const JobListings = () => {
     try {
       setLoading(true);
       const result = await jobService.getPublicJobs();
-      setJobs(result.data);
+      
+      // Handle different response formats
+      let jobsData = [];
+      if (result && result.success && result.data) {
+        jobsData = Array.isArray(result.data) ? result.data : [];
+      } else if (result && Array.isArray(result)) {
+        jobsData = result;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        jobsData = result.data;
+      } else {
+        jobsData = [];
+      }
+      
+      setJobs(jobsData);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: 'Failed to load job listings'
-      });
+      // Only log if it's an actual error (not empty data scenario)
+      if (error.message && !error.message.includes('returning empty')) {
+        console.warn('Error fetching jobs:', error.message);
+      }
+      
+      // Set empty array - no jobs is a valid state, not an error
+      setJobs([]);
+      
+      // Only show notification for auth errors
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Auth errors are handled elsewhere
+        return;
+      }
+      
+      // Don't show error notifications for empty data - it's normal if there are no jobs
     } finally {
       setLoading(false);
     }
@@ -152,7 +175,7 @@ const JobListings = () => {
       <div className="jobs-container">
         {filteredJobs.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">💼</div>
+            <div className="empty-icon"></div>
             <h3>No jobs found</h3>
             <p>Try adjusting your filters or check back later for new opportunities.</p>
           </div>
@@ -165,9 +188,9 @@ const JobListings = () => {
                     <h3>{job.title}</h3>
                     <p className="company">{job.companyName}</p>
                     <div className="job-meta">
-                      <span className="location">📍 {job.location}</span>
-                      <span className="type">🕒 {job.type}</span>
-                      <span className="department">🏢 {job.department}</span>
+                      <span className="location">{job.location}</span>
+                      <span className="type">{job.type}</span>
+                      <span className="department">{job.department}</span>
                     </div>
                   </div>
                   <div className="job-match">
@@ -220,7 +243,7 @@ const JobListings = () => {
                   <div className="job-actions">
                     {hasApplied(job.id) ? (
                       <button className="btn-applied" disabled>
-                        ✅ Applied
+                        Applied
                       </button>
                     ) : (
                       <button

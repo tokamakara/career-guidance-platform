@@ -32,7 +32,6 @@ const StudentDashboardHome = () => {
           className="dashboard-card education-card"
           onClick={() => handleModeSelection('education')}
         >
-          <div className="card-icon">🎓</div>
           <h3>Education Dashboard</h3>
           <p>Discover institutions, apply for courses, and track your admissions</p>
           <ul className="card-features">
@@ -48,7 +47,6 @@ const StudentDashboardHome = () => {
           className="dashboard-card career-card"
           onClick={() => handleModeSelection('career')}
         >
-          <div className="card-icon">💼</div>
           <h3>Career Dashboard</h3>
           <p>Upload transcripts, find jobs, and connect with employers</p>
           <ul className="card-features">
