@@ -2,16 +2,59 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({  // ← FIXED: createTransport (not createTransporter)
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    this.isConfigured = false;
+    this.transporter = null;
+    this.initializeTransporter();
+  }
+
+  initializeTransporter() {
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+      console.warn('⚠️  Email service not configured: EMAIL_USER or EMAIL_PASS missing');
+      console.warn('⚠️  Verification emails will not be sent. Please configure email credentials.');
+      this.isConfigured = false;
+      return;
+    }
+
+    try {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: emailUser,
+          pass: emailPass
+        }
+      });
+
+      // Verify transporter configuration asynchronously
+      this.transporter.verify((error, success) => {
+        if (error) {
+          console.error('❌ Email transporter verification failed:', error.message);
+          console.error('❌ Check your EMAIL_USER and EMAIL_PASS environment variables');
+          console.error('❌ Common issues:');
+          console.error('   - EMAIL_PASS must be a Gmail App Password (not your regular password)');
+          console.error('   - Enable 2-Step Verification in your Google Account');
+          console.error('   - Generate App Password from: https://myaccount.google.com/apppasswords');
+          this.isConfigured = false;
+        } else {
+          console.log('✅ Email service configured and verified');
+          this.isConfigured = true;
+        }
+      });
+    } catch (error) {
+      console.error('❌ Failed to initialize email transporter:', error.message);
+      this.isConfigured = false;
+    }
   }
 
   async sendEmail(to, subject, html) {
+    if (!this.isConfigured || !this.transporter) {
+      const errorMsg = 'Email service not configured. Please set EMAIL_USER and EMAIL_PASS environment variables.';
+      console.error('❌', errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
     try {
       const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -20,11 +63,33 @@ class EmailService {
         html
       };
 
-      await this.transporter.sendMail(mailOptions);
-      return { success: true };
+      console.log(`📧 Attempting to send email to: ${to}`);
+      console.log(`📧 Subject: ${subject}`);
+      
+      const info = await this.transporter.sendMail(mailOptions);
+      
+      console.log('✅ Email sent successfully:', info.messageId);
+      console.log('✅ Email response:', info.response);
+      
+      return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('Email sending error:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Email sending error:', error.message);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error details:', {
+        command: error.command,
+        response: error.response,
+        responseCode: error.responseCode
+      });
+      
+      // Provide helpful error messages
+      let errorMessage = error.message;
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Email authentication failed. Please check your EMAIL_USER and EMAIL_PASS.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Email connection failed. Please check your internet connection.';
+      }
+      
+      return { success: false, error: errorMessage };
     }
   }
 

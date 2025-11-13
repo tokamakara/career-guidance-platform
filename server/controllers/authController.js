@@ -6,7 +6,7 @@ class AuthController {
     try {
       const { email, password, firstName, lastName, role, ...roleData } = req.body;
 
-      // Check if user already exists
+      // Check if user already exists in Firebase Auth
       try {
         const existingUser = await admin.auth().getUserByEmail(email);
         if (existingUser) {
@@ -20,7 +20,25 @@ class AuthController {
         if (error.code !== 'auth/user-not-found') {
           throw error;
         }
-        // User doesn't exist, continue with registration
+        // User doesn't exist in Firebase Auth, check Firestore
+      }
+
+      // Also check Firestore for any orphaned records
+      try {
+        const firestoreUsers = await db.collection('users')
+          .where('email', '==', email)
+          .limit(1)
+          .get();
+        
+        if (!firestoreUsers.empty) {
+          return res.status(400).json({
+            success: false,
+            message: 'This email is already registered. Please use a different email or sign in instead.'
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️  Error checking Firestore for existing user:', error.message);
+        // Continue with registration if Firestore check fails
       }
 
       // Create user in Firebase Auth
@@ -100,12 +118,30 @@ class AuthController {
       // Send verification email asynchronously (don't block response)
       setImmediate(async () => {
         try {
+          console.log(`📧 Generating verification link for: ${email}`);
           const verificationLink = await admin.auth().generateEmailVerificationLink(email);
-          await emailService.sendVerificationEmail(email, verificationLink);
-          console.log('✅ Verification email sent to:', email);
+          console.log(`✅ Verification link generated for: ${email}`);
+          
+          const emailResult = await emailService.sendVerificationEmail(email, verificationLink);
+          
+          if (emailResult.success) {
+            console.log(`✅ Verification email sent successfully to: ${email}`);
+            console.log(`📧 Email message ID: ${emailResult.messageId}`);
+          } else {
+            console.error(`❌ Failed to send verification email to: ${email}`);
+            console.error(`❌ Error: ${emailResult.error}`);
+            console.warn('⚠️  User registered but verification email was not sent.');
+            console.warn('⚠️  Please check email service configuration (EMAIL_USER, EMAIL_PASS).');
+          }
         } catch (emailError) {
-          console.warn('⚠️ Failed to send verification email:', emailError);
-          // Don't fail registration if email sending fails
+          console.error('❌ Error in email sending process:', emailError);
+          console.error('❌ Error details:', {
+            message: emailError.message,
+            code: emailError.code,
+            stack: emailError.stack
+          });
+          console.warn('⚠️  User registered but verification email failed to send.');
+          console.warn('⚠️  User can still log in, but email verification is required.');
         }
       });
 

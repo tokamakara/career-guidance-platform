@@ -118,6 +118,25 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Check email configuration on startup
+const emailService = require('./utils/emailService');
+setTimeout(() => {
+  if (!emailService.isConfigured) {
+    console.warn('');
+    console.warn('⚠️  ════════════════════════════════════════════════════════════');
+    console.warn('⚠️  EMAIL SERVICE NOT CONFIGURED');
+    console.warn('⚠️  ════════════════════════════════════════════════════════════');
+    console.warn('⚠️  Verification emails will NOT be sent.');
+    console.warn('⚠️  Please set the following environment variables:');
+    console.warn('⚠️    - EMAIL_USER (your Gmail address)');
+    console.warn('⚠️    - EMAIL_PASS (Gmail App Password)');
+    console.warn('⚠️  ════════════════════════════════════════════════════════════');
+    console.warn('');
+  } else {
+    console.log('✅ Email service is configured and ready');
+  }
+}, 2000); // Wait 2 seconds for email service to verify
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 Career Guidance Platform API`);
