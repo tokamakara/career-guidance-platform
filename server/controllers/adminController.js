@@ -260,7 +260,7 @@ class AdminController {
     }
   }
 
-  // Delete user account
+  // Delete user account by userId
   async deleteUser(req, res) {
     try {
       const { userId } = req.params;
@@ -286,6 +286,82 @@ class AdminController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete user'
+      });
+    }
+  }
+
+  // Delete user account by email (for easier management)
+  async deleteUserByEmail(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+      }
+
+      console.log(`🔍 Searching for user with email: ${email}`);
+
+      // Find user by email in Firebase Auth
+      let userRecord;
+      try {
+        userRecord = await admin.auth().getUserByEmail(email);
+        console.log(`✅ Found user in Firebase Auth: ${userRecord.uid}`);
+      } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+          // Try Firestore
+          const usersSnapshot = await db.collection('users')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+
+          if (usersSnapshot.empty) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found'
+            });
+          }
+
+          const userDoc = usersSnapshot.docs[0];
+          const userId = userDoc.id;
+
+          // Delete from Firestore only
+          await db.collection('users').doc(userId).delete();
+          console.log('✅ Deleted from Firestore');
+
+          return res.json({
+            success: true,
+            message: 'User deleted successfully (Firestore only - not in Firebase Auth)'
+          });
+        }
+        throw error;
+      }
+
+      const userId = userRecord.uid;
+
+      // Delete from Firebase Auth
+      await admin.auth().deleteUser(userId);
+      console.log('✅ Deleted from Firebase Auth');
+
+      // Delete from Firestore
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        await db.collection('users').doc(userId).delete();
+        console.log('✅ Deleted from Firestore');
+      }
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully'
+      });
+
+    } catch (error) {
+      console.error('Delete user by email error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to delete user'
       });
     }
   }

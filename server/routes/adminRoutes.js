@@ -34,6 +34,7 @@ router.put('/approve/:userId', authenticateToken, requireRole(['admin']), adminC
 router.put('/suspend/:userId', authenticateToken, requireRole(['admin']), adminController.suspendUser);
 router.put('/reactivate/:userId', authenticateToken, requireRole(['admin']), adminController.reactivateUser);
 router.delete('/users/:userId', authenticateToken, requireRole(['admin']), adminController.deleteUser);
+router.delete('/users/by-email', authenticateToken, requireRole(['admin']), adminController.deleteUserByEmail);
 router.get('/reports', authenticateToken, requireRole(['admin']), adminController.getReports);
 
 // Applications Overview

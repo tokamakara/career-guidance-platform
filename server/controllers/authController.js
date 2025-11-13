@@ -6,10 +6,14 @@ class AuthController {
     try {
       const { email, password, firstName, lastName, role, ...roleData } = req.body;
 
+      // Normalize email for comparison (lowercase, trim)
+      const normalizedEmail = email.toLowerCase().trim();
+
       // Check if user already exists in Firebase Auth
       try {
-        const existingUser = await admin.auth().getUserByEmail(email);
+        const existingUser = await admin.auth().getUserByEmail(normalizedEmail);
         if (existingUser) {
+          console.log(`⚠️  User found in Firebase Auth: ${existingUser.uid}`);
           return res.status(400).json({
             success: false,
             message: 'This email is already registered. Please use a different email or sign in instead.'
@@ -18,27 +22,35 @@ class AuthController {
       } catch (error) {
         // If error is not "user not found", it's a real error
         if (error.code !== 'auth/user-not-found') {
+          console.error('❌ Error checking Firebase Auth:', error);
           throw error;
         }
-        // User doesn't exist in Firebase Auth, check Firestore
+        // User doesn't exist in Firebase Auth, continue to check Firestore
+        console.log(`✅ User not found in Firebase Auth, checking Firestore...`);
       }
 
-      // Also check Firestore for any orphaned records
+      // Also check Firestore for any orphaned records (case-insensitive)
       try {
+        // Firestore queries are case-sensitive, so we need to check with normalized email
         const firestoreUsers = await db.collection('users')
-          .where('email', '==', email)
+          .where('email', '==', normalizedEmail)
           .limit(1)
           .get();
         
         if (!firestoreUsers.empty) {
+          const existingUserDoc = firestoreUsers.docs[0];
+          console.log(`⚠️  User found in Firestore: ${existingUserDoc.id}`);
+          console.log(`⚠️  Firestore email: ${existingUserDoc.data().email}`);
+          
           return res.status(400).json({
             success: false,
             message: 'This email is already registered. Please use a different email or sign in instead.'
           });
         }
+        console.log(`✅ User not found in Firestore either, proceeding with registration...`);
       } catch (error) {
         console.warn('⚠️  Error checking Firestore for existing user:', error.message);
-        // Continue with registration if Firestore check fails
+        // Continue with registration if Firestore check fails (don't block registration)
       }
 
       // Create user in Firebase Auth
@@ -49,10 +61,10 @@ class AuthController {
         emailVerified: false
       });
 
-      // Create user profile in Firestore
+      // Create user profile in Firestore (use normalized email)
       const userProfile = {
         uid: userRecord.uid,
-        email: userRecord.email,
+        email: normalizedEmail, // Store normalized email
         firstName,
         lastName,
         role,
@@ -155,6 +167,7 @@ class AuthController {
       
       // Handle specific Firebase errors
       if (error.code === 'auth/email-already-exists' || error.code === 'auth/email-already-in-use') {
+        console.log(`⚠️  Firebase Auth error: ${error.code} for email: ${email}`);
         return res.status(400).json({
           success: false,
           message: 'This email is already registered. Please use a different email or sign in instead.'
