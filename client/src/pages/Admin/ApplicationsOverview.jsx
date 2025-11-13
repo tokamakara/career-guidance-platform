@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api/adminService';
 import { useNotification } from '../../context/NotificationContext';
 import Table from '../../components/ui/Table';
-import { exportToCSV, exportToExcel, formatDateRangeForFilename } from '../../utils/exportUtils';
+import { exportToExcel, formatDateRangeForFilename } from '../../utils/exportUtils';
 import './ApplicationsOverview.css';
 import '../../components/common/SkeletonLoader.css';
 
@@ -182,7 +182,7 @@ const ApplicationsOverview = () => {
     });
   };
 
-  const handleExportCSV = () => {
+  const handleExportPDF = async () => {
     try {
       if (applications.length === 0) {
         addNotification({
@@ -193,14 +193,54 @@ const ApplicationsOverview = () => {
         return;
       }
 
-      const filename = `${activeTab}_applications_${formatDateRangeForFilename(filters.startDate, filters.endDate)}`;
-      exportToCSV(applications, filename, getColumns());
-      
-      addNotification({
-        type: 'success',
-        title: 'Export Successful',
-        message: 'Applications exported to CSV successfully'
-      });
+      // Export PDF based on active tab
+      if (activeTab === 'institute') {
+        // Export institute admitted students
+        const institutionIds = [...new Set(applications.map(app => app.institutionId).filter(Boolean))];
+        if (institutionIds.length > 0) {
+          // Export for first institution (or all if multiple)
+          for (const instId of institutionIds) {
+            await adminService.exportInstituteAdmittedStudents(instId, null);
+          }
+          addNotification({
+            type: 'success',
+            title: 'Export Successful',
+            message: 'Admitted students exported to PDF successfully'
+          });
+        } else {
+          addNotification({
+            type: 'info',
+            title: 'PDF Export',
+            message: 'No admitted students to export. Please use Excel export for all applications.'
+          });
+        }
+      } else if (activeTab === 'company') {
+        // Export company admitted candidates
+        const companyIds = [...new Set(applications.map(app => app.companyId).filter(Boolean))];
+        if (companyIds.length > 0) {
+          for (const compId of companyIds) {
+            await adminService.exportCompanyAdmittedCandidates(compId, null);
+          }
+          addNotification({
+            type: 'success',
+            title: 'Export Successful',
+            message: 'Admitted candidates exported to PDF successfully'
+          });
+        } else {
+          addNotification({
+            type: 'info',
+            title: 'PDF Export',
+            message: 'No admitted candidates to export. Please use Excel export for all applications.'
+          });
+        }
+      } else {
+        // Combined - export both
+        addNotification({
+          type: 'info',
+          title: 'PDF Export',
+          message: 'Please use individual tabs (Institute/Company) to export PDFs, or use Excel export for combined data.'
+        });
+      }
     } catch (error) {
       addNotification({
         type: 'error',
@@ -327,6 +367,18 @@ const ApplicationsOverview = () => {
             </div>
           </>
         )}
+      </div>
+
+      {/* Export Buttons */}
+      <div className="export-filters-section">
+        <div className="export-buttons">
+          <button onClick={handleExportExcel} className="btn-export btn-export-excel" disabled={loading || applications.length === 0}>
+            Export Excel
+          </button>
+          <button onClick={handleExportPDF} className="btn-export btn-export-pdf" disabled={loading || applications.length === 0}>
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

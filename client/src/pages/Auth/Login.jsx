@@ -14,21 +14,49 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
   
-  const { login, loginWithGoogle, currentUser, userProfile } = useAuth();
+  const { login, loginWithGoogle, currentUser, userProfile, resendEmailVerification } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/';
+  const registrationMessage = location.state?.message;
+  const registrationEmail = location.state?.email;
+  const shouldShowResend = location.state?.showResend;
+
+  // Show registration message if coming from registration
+  useEffect(() => {
+    if (registrationMessage) {
+      addNotification({
+        type: 'info',
+        title: 'Email Verification Required',
+        message: registrationMessage
+      });
+      if (shouldShowResend) {
+        setShowResendVerification(true);
+      }
+    }
+  }, [registrationMessage, shouldShowResend, addNotification]);
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (currentUser && userProfile) {
+    if (currentUser && userProfile && location.pathname === '/login') {
+      const redirectPath = getRedirectPath(userProfile.role);
+      // Show success notification only once when redirecting after login
+      addNotification({
+        type: 'success',
+        title: 'Login Successful',
+        message: 'Welcome back!'
+      });
+      navigate(redirectPath, { replace: true });
+    } else if (currentUser && userProfile) {
+      // Already logged in, just redirect without notification
       const redirectPath = getRedirectPath(userProfile.role);
       navigate(redirectPath, { replace: true });
     }
-  }, [currentUser, userProfile, navigate]);
+  }, [currentUser, userProfile, navigate, location.pathname, addNotification]);
 
   const getRedirectPath = (role) => {
     switch (role) {
@@ -69,34 +97,44 @@ const Login = () => {
     }));
 
     // Validate single field on blur
-    const fieldErrors = validateForm({ [name]: formData[name] }, { [name]: validationSchemas.login[name] });
-    if (fieldErrors.errors[name]) {
+    const { errors: fieldErrors } = validateForm(
+      { [name]: formData[name] }, 
+      { [name]: validationSchemas.login[name] }
+    );
+    
+    if (fieldErrors[name]) {
       setErrors(prev => ({
         ...prev,
-        [name]: fieldErrors.errors[name]
+        [name]: fieldErrors[name]
       }));
+    } else {
+      // Clear error if validation passes
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
   };
 
   const validateAllFields = () => {
-    const { errors: newErrors } = validateForm(formData, validationSchemas.login);
+    const { errors: newErrors, isValid } = validateForm(formData, validationSchemas.login);
     setErrors(newErrors);
     setTouched({
       email: true,
       password: true
     });
-    return Object.keys(newErrors).length === 0;
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Clear any previous errors
+    setErrors({});
+    
     if (!validateAllFields()) {
-      addNotification({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Please fix the errors in the form'
-      });
+      // Don't show notification - errors are already displayed in the form
       return;
     }
 
@@ -104,18 +142,45 @@ const Login = () => {
 
     try {
       await login(formData.email, formData.password);
-      addNotification({
-        type: 'success',
-        title: 'Login Successful',
-        message: 'Welcome back!'
-      });
+      // Don't show success notification here - it will be shown after redirect
       // Navigation will be handled by the useEffect
     } catch (error) {
-      addNotification({
-        type: 'error',
-        title: 'Login Failed',
-        message: error.message || 'Invalid email or password'
-      });
+      // Handle different error types
+      let errorMessage = 'Invalid email or password';
+      
+      // Check error code or message for Firebase auth errors
+      const errorCode = error.code || (error.message?.includes('auth/') ? error.message.match(/auth\/[a-z-]+/)?.[0] : null);
+      
+      if (errorCode === 'auth/user-not-found' || 
+          errorCode === 'auth/wrong-password' || 
+          errorCode === 'auth/invalid-credential' ||
+          errorCode === 'auth/invalid-login-credentials' ||
+          error.message?.includes('Invalid email or password') ||
+          error.message?.includes('Wrong password') ||
+          error.message?.includes('user does not exist')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (errorCode === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address format';
+        setErrors({ email: 'Invalid email address format' });
+      } else if (errorCode === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      } else if (error.message?.includes('verify your email') || 
+                 error.message?.includes('email verification') ||
+                 error.message?.includes('User profile not found')) {
+        errorMessage = error.message;
+        setShowResendVerification(true);
+      } else if (error.message && !error.message.includes('Validation Error') && !error.message?.includes('fix the errors')) {
+        errorMessage = error.message;
+      }
+      
+      // Only show notification if it's not a validation error (those are shown in form)
+      if (!error.message?.includes('Validation Error') && !error.message?.includes('fix the errors')) {
+        addNotification({
+          type: 'error',
+          title: 'Login Failed',
+          message: errorMessage
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -150,7 +215,9 @@ const Login = () => {
               disabled={loading}
             />
             {getFieldError('email') && (
-              <span className="error-text">{errors.email}</span>
+              <span className="error-text">
+                {typeof errors.email === 'string' ? errors.email : 'Email address is required'}
+              </span>
             )}
           </div>
 
@@ -169,7 +236,9 @@ const Login = () => {
               disabled={loading}
             />
             {getFieldError('password') && (
-              <span className="error-text">{errors.password}</span>
+              <span className="error-text">
+                {typeof errors.password === 'string' ? errors.password : 'Password is required'}
+              </span>
             )}
           </div>
 
@@ -238,6 +307,69 @@ const Login = () => {
               Forgot your password?
             </Link>
           </p>
+          {(showResendVerification || registrationEmail) && (
+            <p style={{ marginTop: '12px', marginBottom: '0' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    // If we have a user but they're not verified, use that user
+                    // Otherwise, we need to sign them in first to resend
+                    if (!currentUser) {
+                      if (registrationEmail) {
+                        addNotification({
+                          type: 'info',
+                          title: 'Sign In Required',
+                          message: 'Please sign in first with your email and password, then you can resend the verification email.'
+                        });
+                      } else {
+                        addNotification({
+                          type: 'info',
+                          title: 'Sign In Required',
+                          message: 'Please sign in first, then you can resend the verification email.'
+                        });
+                      }
+                      setLoading(false);
+                      return;
+                    }
+                    
+                    // User is signed in, resend verification
+                    const result = await resendEmailVerification();
+                    addNotification({
+                      type: 'success',
+                      title: 'Verification Email Sent',
+                      message: result.message || 'Please check your inbox (and spam folder) for the verification link. The link will expire in 1 hour.'
+                    });
+                    setShowResendVerification(false);
+                  } catch (error) {
+                    addNotification({
+                      type: 'error',
+                      title: 'Failed to Send Email',
+                      message: error.message || 'Failed to resend verification email. Please try again later.'
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="auth-link"
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  padding: 0, 
+                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  textDecoration: 'underline',
+                  color: '#007bff',
+                  opacity: loading ? 0.6 : 1,
+                  fontSize: '0.9rem',
+                  fontWeight: '500'
+                }}
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Resend verification email'}
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>

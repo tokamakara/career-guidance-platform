@@ -156,23 +156,28 @@ const Navbar = () => {
                 {/* Student Mode Switcher */}
                 {userProfile?.role === 'student' && <ModeSwitcher />}
                 
-                {/* Notifications */}
-                <NotificationBell />
+                {/* Notifications - Show for all authenticated users */}
+                {currentUser && <NotificationBell />}
                 
-                {/* User Menu */}
-                <div className="navbar-user">
-                  <div className="user-info">
-                    <span className="user-name">
-                      {userProfile?.firstName} {userProfile?.lastName}
-                    </span>
-                    <span className="user-role">{userProfile?.role}</span>
-                  </div>
-                  <div className="user-dropdown">
-                    <button className="dropdown-toggle">
-                      <div className="user-avatar">
-                        {userProfile?.firstName?.charAt(0)}{userProfile?.lastName?.charAt(0)}
-                      </div>
-                    </button>
+                {/* User Menu - Show for all authenticated users */}
+                {currentUser && (
+                  <div className="navbar-user">
+                    <div className="user-info">
+                      <span className="user-name">
+                        {userProfile?.firstName && userProfile?.lastName 
+                          ? `${userProfile.firstName} ${userProfile.lastName}`
+                          : userProfile?.email?.split('@')[0] || 'User'}
+                      </span>
+                      <span className="user-role">{userProfile?.role || 'user'}</span>
+                    </div>
+                    <div className="user-dropdown">
+                      <button className="dropdown-toggle">
+                        <div className="user-avatar">
+                          {userProfile?.firstName?.charAt(0) && userProfile?.lastName?.charAt(0)
+                            ? `${userProfile.firstName.charAt(0)}${userProfile.lastName.charAt(0)}`
+                            : userProfile?.email?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                      </button>
                     
                     <div className="dropdown-menu">
                       <Link 
@@ -206,6 +211,7 @@ const Navbar = () => {
                     </div>
                   </div>
                 </div>
+                )}
               </div>
             </>
           ) : (

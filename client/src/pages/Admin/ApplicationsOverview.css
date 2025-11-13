@@ -136,15 +136,15 @@
   cursor: not-allowed;
 }
 
-.btn-export-csv {
-  background: #28a745;
+.btn-export-pdf {
+  background: #dc3545;
   color: white;
 }
 
-.btn-export-csv:hover:not(:disabled) {
-  background: #218838;
+.btn-export-pdf:hover:not(:disabled) {
+  background: #c82333;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .btn-export-excel {

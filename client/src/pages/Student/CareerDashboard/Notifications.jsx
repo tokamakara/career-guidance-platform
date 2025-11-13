@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../hooks/useAuth';
-import { useNotification } from '../../../../hooks/useNotification';
+import { useNotification } from '../../../context/NotificationContext';
 
 const Notifications = () => {
   const [notifications, setNotifications] = useState([]);

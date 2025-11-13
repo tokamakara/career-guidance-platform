@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'; // Fixed path
 import Loader from './Loader';
+import PendingApproval from './PendingApproval';
 
 const ProtectedRoute = ({ 
   children, 
@@ -31,6 +32,16 @@ const ProtectedRoute = ({
     if (!requiredRole && allowedRoles.length === 0) {
       return <Navigate to="/unauthorized" replace />;
     }
+  }
+
+  // Block pending companies/institutes from accessing any pages except profile/settings
+  // Allow profile and settings pages for pending users
+  const isPendingCompanyOrInstitute = (userProfile?.status === 'pending' && 
+                                       (userProfile?.role === 'company' || userProfile?.role === 'institute'));
+  const isProfileOrSettingsPage = location.pathname.includes('/profile') || location.pathname.includes('/settings');
+  
+  if (isPendingCompanyOrInstitute && !isProfileOrSettingsPage) {
+    return <PendingApproval />;
   }
 
   return children;

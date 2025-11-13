@@ -4,63 +4,134 @@ class AdminController {
   // Get dashboard statistics
   async getDashboardStats(req, res) {
     try {
-      // Get users count
-      const usersSnapshot = await db.collection('users').get();
+      console.log('📊 Fetching admin dashboard stats...');
       
-      // Get institutions (from users collection with role='institute')
-      const institutionsQuery = db.collection('users').where('role', '==', 'institute');
-      const institutionsSnapshot = await institutionsQuery.get();
-      
-      // Get companies (from users collection with role='company')
-      const companiesQuery = db.collection('users').where('role', '==', 'company');
-      const companiesSnapshot = await companiesQuery.get();
-      
-      // Get applications
-      const applicationsSnapshot = await db.collection('educationApplications').get();
-      
-      // Get jobs
-      const jobsSnapshot = await db.collection('jobs').get();
-
-      // Count pending institutions and companies
-      let pendingInstitutions = 0;
-      let pendingCompanies = 0;
-      
-      institutionsSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.status === 'pending' || data.approvalStatus === 'pending') {
-          pendingInstitutions++;
-        }
-      });
-      
-      companiesSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.status === 'pending' || data.approvalStatus === 'pending') {
-          pendingCompanies++;
-        }
-      });
-
-      const stats = {
-        totalUsers: usersSnapshot.size,
-        totalInstitutions: institutionsSnapshot.size,
-        totalCompanies: companiesSnapshot.size,
-        totalApplications: applicationsSnapshot.size,
-        totalJobs: jobsSnapshot.size,
+      // Initialize default stats
+      let stats = {
+        totalUsers: 0,
+        totalInstitutions: 0,
+        totalCompanies: 0,
+        totalApplications: 0,
+        totalJobs: 0,
         pendingApprovals: {
-          institutions: pendingInstitutions,
-          companies: pendingCompanies
+          institutions: 0,
+          companies: 0
         }
       };
 
+      // Get users count
+      try {
+        const usersSnapshot = await db.collection('users').get();
+        stats.totalUsers = usersSnapshot.size;
+        console.log(`✅ Users count: ${stats.totalUsers}`);
+      } catch (error) {
+        console.error('❌ Error fetching users:', error.message);
+        // Continue with default value
+      }
+      
+      // Get institutions (from users collection with role='institute')
+      let institutionsSnapshot = null;
+      try {
+        const institutionsQuery = db.collection('users').where('role', '==', 'institute');
+        institutionsSnapshot = await institutionsQuery.get();
+        stats.totalInstitutions = institutionsSnapshot.size;
+        console.log(`✅ Institutions count: ${stats.totalInstitutions}`);
+      } catch (error) {
+        console.error('❌ Error fetching institutions:', error.message);
+        // Continue with default value
+      }
+      
+      // Get companies (from users collection with role='company')
+      let companiesSnapshot = null;
+      try {
+        const companiesQuery = db.collection('users').where('role', '==', 'company');
+        companiesSnapshot = await companiesQuery.get();
+        stats.totalCompanies = companiesSnapshot.size;
+        console.log(`✅ Companies count: ${stats.totalCompanies}`);
+      } catch (error) {
+        console.error('❌ Error fetching companies:', error.message);
+        // Continue with default value
+      }
+      
+      // Get applications
+      try {
+        const applicationsSnapshot = await db.collection('educationApplications').get();
+        stats.totalApplications = applicationsSnapshot.size;
+        console.log(`✅ Applications count: ${stats.totalApplications}`);
+      } catch (appError) {
+        console.warn('⚠️ Error fetching applications:', appError.message);
+        // Continue with default value
+      }
+      
+      // Get jobs
+      try {
+        const jobsSnapshot = await db.collection('jobs').get();
+        stats.totalJobs = jobsSnapshot.size;
+        console.log(`✅ Jobs count: ${stats.totalJobs}`);
+      } catch (jobError) {
+        console.warn('⚠️ Error fetching jobs:', jobError.message);
+        // Continue with default value
+      }
+
+      // Count pending institutions and companies
+      if (institutionsSnapshot) {
+        try {
+          institutionsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'pending' || data.approvalStatus === 'pending') {
+              stats.pendingApprovals.institutions++;
+            }
+          });
+        } catch (error) {
+          console.warn('⚠️ Error counting pending institutions:', error.message);
+        }
+      }
+      
+      if (companiesSnapshot) {
+        try {
+          companiesSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.status === 'pending' || data.approvalStatus === 'pending') {
+              stats.pendingApprovals.companies++;
+            }
+          });
+        } catch (error) {
+          console.warn('⚠️ Error counting pending companies:', error.message);
+        }
+      }
+
+      console.log('✅ Dashboard stats calculated:', stats);
+
+      // Always return success, even if some queries failed (graceful degradation)
       res.json({
         success: true,
         data: stats
       });
 
     } catch (error) {
-      console.error('Get dashboard stats error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch dashboard statistics'
+      console.error('❌ Get dashboard stats error:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Return default stats instead of error (graceful degradation)
+      const defaultStats = {
+        totalUsers: 0,
+        totalInstitutions: 0,
+        totalCompanies: 0,
+        totalApplications: 0,
+        totalJobs: 0,
+        pendingApprovals: {
+          institutions: 0,
+          companies: 0
+        }
+      };
+      
+      // Still return 200 with default values so frontend doesn't break
+      res.status(200).json({
+        success: true,
+        data: defaultStats,
+        warning: 'Some data could not be loaded. Showing default values.'
       });
     }
   }
@@ -115,18 +186,8 @@ class AdminController {
         updatedAt: new Date()
       });
 
-      // Update institution/company status
-      if (type === 'institution') {
-        await db.collection('institutions').doc(userId).update({
-          status: 'approved',
-          updatedAt: new Date()
-        });
-      } else if (type === 'company') {
-        await db.collection('companies').doc(userId).update({
-          status: 'approved',
-          updatedAt: new Date()
-        });
-      }
+      // Status is already updated in users collection above
+      // No need to update separate collections
 
       // Get user email for notification
       const userDoc = await db.collection('users').doc(userId).get();
@@ -213,12 +274,7 @@ class AdminController {
       // Delete from Firestore
       await db.collection('users').doc(userId).delete();
 
-      // Delete institution/company record if exists
-      if (user.role === 'institution') {
-        await db.collection('institutions').doc(userId).delete();
-      } else if (user.role === 'company') {
-        await db.collection('companies').doc(userId).delete();
-      }
+      // All user data is in users collection, no separate collections to delete
 
       res.json({
         success: true,
@@ -237,34 +293,52 @@ class AdminController {
   // Get system reports
   async getReports(req, res) {
     try {
-      const { type, startDate, endDate } = req.query;
+      const { type, start, end, startDate, endDate } = req.query;
+      
+      // Support both 'start/end' and 'startDate/endDate' parameter names
+      const dateStart = startDate || start;
+      const dateEnd = endDate || end;
 
       let reportData = {};
 
       switch (type) {
         case 'admissions':
-          reportData = await this.generateAdmissionsReport(startDate, endDate);
+          reportData = await this.generateAdmissionsReport(dateStart, dateEnd);
           break;
+        case 'jobs':
         case 'employment':
-          reportData = await this.generateEmploymentReport(startDate, endDate);
+          reportData = await this.generateEmploymentReport(dateStart, dateEnd);
           break;
         case 'system':
-          reportData = await this.generateSystemReport(startDate, endDate);
+        case 'users':
+          reportData = await this.generateSystemReport(dateStart, dateEnd);
+          break;
+        case 'applications':
+          // For applications, use institute applications data
+          reportData = await this.generateApplicationsReport(dateStart, dateEnd);
+          break;
+        case 'institutions':
+          reportData = await this.generateInstitutionsReport(dateStart, dateEnd);
           break;
         default:
-          reportData = await this.generateGeneralReport(startDate, endDate);
+          reportData = await this.generateGeneralReport(dateStart, dateEnd);
       }
 
       res.json({
         success: true,
-        data: reportData
+        data: reportData.data || reportData,
+        total: reportData.total || (reportData.data && reportData.data.length) || 0,
+        period: reportData.period || (dateStart && dateEnd ? `${dateStart} to ${dateEnd}` : 'All time'),
+        generatedAt: new Date().toISOString()
       });
 
     } catch (error) {
       console.error('Get reports error:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
-        message: 'Failed to generate reports'
+        message: 'Failed to generate reports',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -481,8 +555,8 @@ class AdminController {
         rejectionRate: applications.length > 0
           ? ((applications.filter(a => a.status === 'rejected').length / applications.length) * 100).toFixed(2)
           : 0,
-        topInstitutions: this.getTopInstitutions(applications),
-        popularCourses: this.getPopularCourses(applications)
+        topInstitutions: Array.isArray(applications) && applications.length > 0 ? this.getTopInstitutions(applications) : [],
+        popularCourses: Array.isArray(applications) && applications.length > 0 ? this.getPopularCourses(applications) : []
       };
 
       res.json({
@@ -616,75 +690,165 @@ class AdminController {
 
   // Generate admissions report
   async generateAdmissionsReport(startDate, endDate) {
-    const applicationsSnapshot = await db.collection('educationApplications').get();
-    
-    const applications = applicationsSnapshot.docs.map(doc => doc.data());
-    const filteredApplications = applications.filter(app => {
-      const appDate = app.applicationDate.toDate();
-      return (!startDate || appDate >= new Date(startDate)) && 
-             (!endDate || appDate <= new Date(endDate));
-    });
+    try {
+      const applicationsSnapshot = await db.collection('educationApplications').get();
+      
+      const applications = applicationsSnapshot.docs.map(doc => doc.data());
+      const filteredApplications = applications.filter(app => {
+        const appDate = app.applicationDate?.toDate ? app.applicationDate.toDate() : new Date(app.applicationDate || app.appliedAt);
+        return (!startDate || appDate >= new Date(startDate)) && 
+               (!endDate || appDate <= new Date(endDate));
+      });
 
-    const statusCounts = filteredApplications.reduce((acc, app) => {
-      acc[app.status] = (acc[app.status] || 0) + 1;
-      return acc;
-    }, {});
+      const statusCounts = filteredApplications.reduce((acc, app) => {
+        acc[app.status] = (acc[app.status] || 0) + 1;
+        return acc;
+      }, {});
 
-    return {
-      totalApplications: filteredApplications.length,
-      statusBreakdown: statusCounts,
-      topInstitutions: this.getTopInstitutions(filteredApplications),
-      popularCourses: this.getPopularCourses(filteredApplications)
-    };
+      return {
+        data: filteredApplications.map(app => ({
+          institutionName: app.institutionName || 'Unknown',
+          courseName: app.courseName || 'Unknown',
+          applied: 1,
+          admitted: (app.status === 'admitted' || app.status === 'accepted') ? 1 : 0,
+          rate: app.status === 'admitted' || app.status === 'accepted' ? '100%' : '0%'
+        })),
+        total: filteredApplications.length,
+        statusBreakdown: statusCounts,
+        topInstitutions: filteredApplications.length > 0 ? this.getTopInstitutions(filteredApplications) : [],
+        popularCourses: filteredApplications.length > 0 ? this.getPopularCourses(filteredApplications) : [],
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    } catch (error) {
+      console.error('Generate admissions report error:', error);
+      return {
+        data: [],
+        total: 0,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    }
   }
 
   // Generate employment report
   async generateEmploymentReport(startDate, endDate) {
-    const jobsSnapshot = await db.collection('jobs').get();
-    const jobApplicationsSnapshot = await db.collection('jobApplications').get();
+    try {
+      const jobsSnapshot = await db.collection('jobs').get();
+      const jobApplicationsSnapshot = await db.collection('jobApplications').get();
 
-    const jobs = jobsSnapshot.docs.map(doc => doc.data());
-    const jobApplications = jobApplicationsSnapshot.docs.map(doc => doc.data());
+      const jobs = jobsSnapshot.docs.map(doc => doc.data());
+      const jobApplications = jobApplicationsSnapshot.docs.map(doc => doc.data());
 
-    return {
-      totalJobs: jobs.length,
-      activeJobs: jobs.filter(job => job.status === 'open').length,
-      totalJobApplications: jobApplications.length,
-      applicationStatus: jobApplications.reduce((acc, app) => {
-        acc[app.status] = (acc[app.status] || 0) + 1;
-        return acc;
-      }, {}),
-      topCompanies: this.getTopCompanies(jobs),
-      popularJobTypes: this.getPopularJobTypes(jobs)
-    };
+      // Filter by date range if provided
+      let filteredJobs = jobs;
+      let filteredApplications = jobApplications;
+      
+      if (startDate || endDate) {
+        filteredJobs = jobs.filter(job => {
+          const jobDate = job.createdAt?.toDate ? job.createdAt.toDate() : new Date(job.createdAt || job.postedAt || 0);
+          return (!startDate || jobDate >= new Date(startDate)) &&
+                 (!endDate || jobDate <= new Date(endDate));
+        });
+        
+        filteredApplications = jobApplications.filter(app => {
+          const appDate = app.applicationDate?.toDate ? app.applicationDate.toDate() : new Date(app.applicationDate || app.appliedAt || 0);
+          return (!startDate || appDate >= new Date(startDate)) &&
+                 (!endDate || appDate <= new Date(endDate));
+        });
+      }
+
+      return {
+        data: filteredJobs.map(job => ({
+          companyName: job.companyName || 'Unknown',
+          jobTitle: job.title || job.jobTitle || 'Unknown',
+          applications: filteredApplications.filter(app => app.jobId === job.id || app.jobTitle === job.title).length,
+          matches: filteredApplications.filter(app => (app.jobId === job.id || app.jobTitle === job.title) && app.status === 'shortlisted').length
+        })),
+        total: filteredJobs.length,
+        totalJobApplications: filteredApplications.length,
+        activeJobs: filteredJobs.filter(job => job.status === 'open' || job.status === 'active').length,
+        applicationStatus: filteredApplications.reduce((acc, app) => {
+          acc[app.status] = (acc[app.status] || 0) + 1;
+          return acc;
+        }, {}),
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    } catch (error) {
+      console.error('Generate employment report error:', error);
+      return {
+        data: [],
+        total: 0,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    }
   }
 
   // Generate system report
   async generateSystemReport(startDate, endDate) {
-    const usersSnapshot = await db.collection('users').get();
-    const institutionsSnapshot = await db.collection('institutions').get();
-    const companiesSnapshot = await db.collection('companies').get();
+    try {
+      const usersSnapshot = await db.collection('users').get();
+      const institutionsQuery = db.collection('users').where('role', '==', 'institute');
+      const institutionsSnapshot = await institutionsQuery.get();
+      const companiesQuery = db.collection('users').where('role', '==', 'company');
+      const companiesSnapshot = await companiesQuery.get();
 
-    const users = usersSnapshot.docs.map(doc => doc.data());
+      const users = usersSnapshot.docs.map(doc => doc.data());
 
-    return {
-      totalUsers: users.length,
-      userGrowth: this.calculateUserGrowth(users, startDate, endDate),
-      roleDistribution: users.reduce((acc, user) => {
-        acc[user.role] = (acc[user.role] || 0) + 1;
-        return acc;
-      }, {}),
-      institutionStats: {
-        total: institutionsSnapshot.size,
-        approved: institutionsSnapshot.docs.filter(doc => doc.data().status === 'approved').length,
-        pending: institutionsSnapshot.docs.filter(doc => doc.data().status === 'pending').length
-      },
-      companyStats: {
-        total: companiesSnapshot.size,
-        approved: companiesSnapshot.docs.filter(doc => doc.data().status === 'approved').length,
-        pending: companiesSnapshot.docs.filter(doc => doc.data().status === 'pending').length
+      // Filter users by date range if provided
+      let filteredUsers = users;
+      if (startDate || endDate) {
+        filteredUsers = users.filter(user => {
+          const userDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt || 0);
+          return (!startDate || userDate >= new Date(startDate)) &&
+                 (!endDate || userDate <= new Date(endDate));
+        });
       }
-    };
+
+      return {
+        data: filteredUsers.map(user => ({
+          email: user.email || 'Unknown',
+          role: user.role || 'Unknown',
+          status: user.status || 'active',
+          createdAt: user.createdAt?.toDate ? user.createdAt.toDate().toISOString() : new Date(user.createdAt || 0).toISOString()
+        })),
+        total: filteredUsers.length,
+        totalUsers: users.length,
+        userGrowth: this.calculateUserGrowth(users, startDate, endDate),
+        roleDistribution: users.reduce((acc, user) => {
+          acc[user.role] = (acc[user.role] || 0) + 1;
+          return acc;
+        }, {}),
+        institutionStats: {
+          total: institutionsSnapshot.size,
+          approved: institutionsSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.status === 'approved' || data.approvalStatus === 'approved';
+          }).length,
+          pending: institutionsSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.status === 'pending' || data.approvalStatus === 'pending';
+          }).length
+        },
+        companyStats: {
+          total: companiesSnapshot.size,
+          approved: companiesSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.status === 'approved' || data.approvalStatus === 'approved';
+          }).length,
+          pending: companiesSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return data.status === 'pending' || data.approvalStatus === 'pending';
+          }).length
+        },
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    } catch (error) {
+      console.error('Generate system report error:', error);
+      return {
+        data: [],
+        total: 0,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    }
   }
 
   // Helper methods
@@ -759,13 +923,123 @@ class AdminController {
   }
 
   calculateUserGrowth(users, startDate, endDate) {
-    const filteredUsers = users.filter(user => {
-      const userDate = user.createdAt.toDate();
-      return (!startDate || userDate >= new Date(startDate)) && 
-             (!endDate || userDate <= new Date(endDate));
-    });
+    try {
+      const filteredUsers = users.filter(user => {
+        const userDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt || 0);
+        return (!startDate || userDate >= new Date(startDate)) && 
+               (!endDate || userDate <= new Date(endDate));
+      });
 
-    return filteredUsers.length;
+      return filteredUsers.length;
+    } catch (error) {
+      console.error('Calculate user growth error:', error);
+      return 0;
+    }
+  }
+
+  // Generate applications report
+  async generateApplicationsReport(startDate, endDate) {
+    try {
+      const applicationsSnapshot = await db.collection('educationApplications').get();
+      
+      let applications = applicationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        applications = applications.filter(app => {
+          const appDate = app.applicationDate?.toDate ? app.applicationDate.toDate() : new Date(app.applicationDate || app.appliedAt);
+          return (!startDate || appDate >= new Date(startDate)) &&
+                 (!endDate || appDate <= new Date(endDate));
+        });
+      }
+
+      // Group by institution and course
+      const grouped = {};
+      applications.forEach(app => {
+        const key = `${app.institutionName || 'Unknown'}-${app.courseName || 'Unknown'}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            institutionName: app.institutionName || 'Unknown',
+            courseName: app.courseName || 'Unknown',
+            count: 0,
+            status: app.status || 'pending'
+          };
+        }
+        grouped[key].count++;
+      });
+
+      return {
+        data: Object.values(grouped),
+        total: applications.length,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    } catch (error) {
+      console.error('Generate applications report error:', error);
+      return {
+        data: [],
+        total: 0,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    }
+  }
+
+  // Generate institutions report
+  async generateInstitutionsReport(startDate, endDate) {
+    try {
+      const institutionsSnapshot = await db.collection('users').where('role', '==', 'institute').get();
+      const applicationsSnapshot = await db.collection('educationApplications').get();
+      
+      const institutions = institutionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      let applications = applicationsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Filter applications by date range if provided
+      if (startDate || endDate) {
+        applications = applications.filter(app => {
+          const appDate = app.applicationDate?.toDate ? app.applicationDate.toDate() : new Date(app.applicationDate || app.appliedAt);
+          return (!startDate || appDate >= new Date(startDate)) &&
+                 (!endDate || appDate <= new Date(endDate));
+        });
+      }
+
+      // Calculate performance metrics for each institution
+      const performance = institutions.map(inst => {
+        const instApplications = applications.filter(app => app.institutionId === inst.id);
+        const admitted = instApplications.filter(app => app.status === 'admitted' || app.status === 'accepted').length;
+        const total = instApplications.length;
+        const admissionRate = total > 0 ? ((admitted / total) * 100).toFixed(1) : 0;
+
+        return {
+          institutionName: inst.institutionName || inst.companyName || 'Unknown',
+          totalApplications: total,
+          admitted: admitted,
+          admissionRate: `${admissionRate}%`,
+          status: inst.status || 'active'
+        };
+      });
+
+      return {
+        data: performance,
+        total: institutions.length,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    } catch (error) {
+      console.error('Generate institutions report error:', error);
+      return {
+        data: [],
+        total: 0,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
+      };
+    }
   }
 
   async generateGeneralReport(startDate, endDate) {

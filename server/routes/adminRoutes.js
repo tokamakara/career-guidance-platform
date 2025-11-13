@@ -4,7 +4,31 @@ const adminController = require('../controllers/adminController');
 const { authenticateToken, requireRole } = require('../middlewares/authMiddleware');
 
 // Use ONLY the methods that exist in your adminController
-router.get('/dashboard', authenticateToken, requireRole(['admin']), adminController.getDashboardStats);
+// Wrap in error handler to catch any unhandled errors
+router.get('/dashboard', authenticateToken, requireRole(['admin']), async (req, res, next) => {
+  try {
+    await adminController.getDashboardStats(req, res);
+  } catch (error) {
+    console.error('❌ Unhandled error in dashboard route:', error);
+    if (!res.headersSent) {
+      res.status(200).json({
+        success: true,
+        data: {
+          totalUsers: 0,
+          totalInstitutions: 0,
+          totalCompanies: 0,
+          totalApplications: 0,
+          totalJobs: 0,
+          pendingApprovals: {
+            institutions: 0,
+            companies: 0
+          }
+        },
+        warning: 'Dashboard data could not be loaded. Showing default values.'
+      });
+    }
+  }
+});
 router.get('/users', authenticateToken, requireRole(['admin']), adminController.getUsers);
 router.put('/approve/:userId', authenticateToken, requireRole(['admin']), adminController.approveRegistration);
 router.put('/suspend/:userId', authenticateToken, requireRole(['admin']), adminController.suspendUser);

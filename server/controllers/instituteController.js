@@ -13,15 +13,27 @@ class InstituteController {
         return res.json(cached);
       }
 
-      const snapshot = await db.collection('institutions')
+      // Query users collection with role filter - simple and efficient
+      const snapshot = await db.collection('users')
+        .where('role', '==', 'institute')
         .where('status', '==', 'approved')
         .get();
 
       const institutions = [];
       snapshot.forEach(doc => {
+        const data = doc.data();
         institutions.push({
           id: doc.id,
-          ...doc.data()
+          name: data.institutionName || data.name,
+          type: data.institutionType || data.type,
+          location: data.location,
+          description: data.description,
+          website: data.website,
+          contactEmail: data.email,
+          phone: data.phone,
+          contactPerson: data.contactPerson,
+          status: data.status,
+          createdAt: data.createdAt
         });
       });
 
@@ -49,7 +61,8 @@ class InstituteController {
     try {
       const { institutionId } = req.params;
 
-      const institutionDoc = await db.collection('institutions').doc(institutionId).get();
+      // Get institution data from users collection
+      const institutionDoc = await db.collection('users').doc(institutionId).get();
       if (!institutionDoc.exists) {
         return res.status(404).json({
           success: false,
@@ -57,7 +70,27 @@ class InstituteController {
         });
       }
 
-      const institution = institutionDoc.data();
+      const userData = institutionDoc.data();
+      if (userData.role !== 'institute') {
+        return res.status(404).json({
+          success: false,
+          message: 'Institution not found'
+        });
+      }
+
+      // Map user data to institution format
+      const institution = {
+        id: institutionId,
+        name: userData.institutionName || userData.name,
+        type: userData.institutionType || userData.type,
+        location: userData.location,
+        description: userData.description,
+        website: userData.website,
+        contactEmail: userData.email,
+        phone: userData.phone,
+        contactPerson: userData.contactPerson,
+        status: userData.status
+      };
 
       // Get faculties
       const facultiesSnapshot = await db.collection('institutions')

@@ -76,12 +76,17 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 Career Guidance Platform API`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Allowed Origins: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+  console.log(`📍 Environment: ${NODE_ENV}`);
+  console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+  console.log(`🌐 Allowed Origins: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+  if (NODE_ENV === 'development') {
+    console.log(`💡 Local development mode - Frontend should connect to: http://localhost:${PORT}/api`);
+  }
 });
 
 module.exports = app;

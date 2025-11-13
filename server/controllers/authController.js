@@ -6,6 +6,23 @@ class AuthController {
     try {
       const { email, password, firstName, lastName, role, ...roleData } = req.body;
 
+      // Check if user already exists
+      try {
+        const existingUser = await admin.auth().getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: 'This email is already registered. Please use a different email or sign in instead.'
+          });
+        }
+      } catch (error) {
+        // If error is not "user not found", it's a real error
+        if (error.code !== 'auth/user-not-found') {
+          throw error;
+        }
+        // User doesn't exist, continue with registration
+      }
+
       // Create user in Firebase Auth
       const userRecord = await admin.auth().createUser({
         email,
@@ -36,22 +53,8 @@ class AuthController {
         userProfile.phone = roleData.phone;
         userProfile.website = roleData.website;
         userProfile.description = roleData.description;
-        
-        // Create institution record
-        const institutionData = {
-          id: userRecord.uid,
-          name: roleData.institutionName,
-          type: roleData.institutionType,
-          location: roleData.location,
-          description: roleData.description,
-          website: roleData.website,
-          contactEmail: email,
-          phone: roleData.phone,
-          status: 'pending',
-          createdAt: new Date(),
-          adminId: userRecord.uid
-        };
-        await db.collection('institutions').doc(userRecord.uid).set(institutionData);
+        // Note: Faculties and courses are stored as subcollections under institutions/{id}/faculties
+        // This structure is kept for course management but institution data is in users collection
       }
 
       if (role === 'company') {
@@ -62,23 +65,7 @@ class AuthController {
         userProfile.description = roleData.description;
         userProfile.contactPerson = `${firstName} ${lastName}`;
         userProfile.phone = roleData.phone;
-        
-        // Create company record
-        const companyData = {
-          id: userRecord.uid,
-          name: roleData.companyName,
-          industry: roleData.industry,
-          size: roleData.size,
-          location: roleData.location,
-          website: roleData.website,
-          description: roleData.description,
-          contactEmail: email,
-          phone: roleData.phone,
-          status: 'pending',
-          createdAt: new Date(),
-          adminId: userRecord.uid
-        };
-        await db.collection('companies').doc(userRecord.uid).set(companyData);
+        userProfile.location = roleData.location;
       }
 
       if (role === 'student') {
@@ -95,8 +82,13 @@ class AuthController {
       await db.collection('users').doc(userRecord.uid).set(userProfile);
 
       // Send verification email
-      const verificationLink = await admin.auth().generateEmailVerificationLink(email);
-      await emailService.sendVerificationEmail(email, verificationLink);
+      try {
+        const verificationLink = await admin.auth().generateEmailVerificationLink(email);
+        await emailService.sendVerificationEmail(email, verificationLink);
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send verification email:', emailError);
+        // Don't fail registration if email sending fails
+      }
 
       res.status(201).json({
         success: true,
@@ -110,9 +102,18 @@ class AuthController {
 
     } catch (error) {
       console.error('Registration error:', error);
+      
+      // Handle specific Firebase errors
+      if (error.code === 'auth/email-already-exists' || error.code === 'auth/email-already-in-use') {
+        return res.status(400).json({
+          success: false,
+          message: 'This email is already registered. Please use a different email or sign in instead.'
+        });
+      }
+      
       res.status(500).json({
         success: false,
-        message: 'Registration failed: ' + error.message
+        message: error.message || 'Registration failed. Please try again.'
       });
     }
   }
@@ -121,13 +122,59 @@ class AuthController {
     try {
       const { email, password } = req.body;
 
-      // Verify user exists and get custom token
-      const user = await admin.auth().getUserByEmail(email);
-      
-      // Check if user is approved (for institutes and companies)
-      const userDoc = await db.collection('users').doc(user.uid).get();
-      const userProfile = userDoc.data();
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email and password are required.'
+        });
+      }
 
+      // Note: Firebase Admin SDK cannot verify passwords directly
+      // Password verification happens on the frontend when signing in with custom token
+      // If the password is wrong, the frontend signInWithCustomToken will fail
+      // But we still need to verify the user exists first
+      let user;
+      try {
+        user = await admin.auth().getUserByEmail(email);
+      } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid email or password.'
+          });
+        }
+        throw error;
+      }
+      
+      // Check if user profile exists in Firestore
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      let userProfile = userDoc.data();
+
+      // RECOVERY MECHANISM: If profile doesn't exist, create a basic one
+      if (!userProfile) {
+        console.warn(`⚠️ User profile missing for ${email} (${user.uid}). Creating recovery profile...`);
+        
+        // Try to infer role from email or create a basic profile
+        // Default to 'student' if we can't determine
+        const recoveryProfile = {
+          uid: user.uid,
+          email: user.email,
+          firstName: user.displayName?.split(' ')[0] || 'User',
+          lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+          role: 'student', // Default role
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          emailVerified: user.emailVerified || false,
+          status: 'approved' // Auto-approve recovery profiles
+        };
+
+        await db.collection('users').doc(user.uid).set(recoveryProfile);
+        userProfile = recoveryProfile;
+        
+        console.log(`✅ Recovery profile created for ${email}`);
+      }
+
+      // Check if user is approved (for institutes and companies)
       if (userProfile.status === 'pending') {
         return res.status(403).json({
           success: false,
@@ -162,6 +209,15 @@ class AuthController {
 
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password.'
+        });
+      }
+      
       res.status(401).json({
         success: false,
         message: 'Login failed: ' + error.message

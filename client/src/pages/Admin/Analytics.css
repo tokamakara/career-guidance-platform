@@ -253,9 +253,9 @@
   box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
 }
 
-.btn-export-csv {
+.btn-export-excel {
   padding: 8px 16px;
-  background: #28a745;
+  background: #007bff;
   color: white;
   border: none;
   border-radius: 6px;
@@ -265,10 +265,10 @@
   transition: all 0.3s ease;
 }
 
-.btn-export-csv:hover {
-  background: #218838;
+.btn-export-excel:hover {
+  background: #0056b3;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
 }
 
 .stats-table {

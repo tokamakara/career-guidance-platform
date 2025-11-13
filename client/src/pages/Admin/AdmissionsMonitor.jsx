@@ -15,15 +15,40 @@ const AdmissionsMonitor = () => {
   const loadAdmissionsData = async () => {
     try {
       setLoading(true);
-      const [admissionsData, statsData] = await Promise.all([
+      setError('');
+      
+      const [admissionsData, statsDataResponse] = await Promise.all([
         adminService.getAdmissionsReport(),
         adminService.getDashboardStats()
       ]);
       
-      setAdmissions(admissionsData);
-      setStats(statsData);
+      setAdmissions(admissionsData || []);
+      
+      // Extract stats from dashboard response
+      const statsData = statsDataResponse?.data || statsDataResponse || {};
+      const totalAdmitted = admissionsData?.reduce((sum, item) => sum + (item.admitted || 0), 0) || 0;
+      const totalApplications = admissionsData?.reduce((sum, item) => sum + (item.totalApplications || 0), 0) || statsData.totalApplications || 0;
+      const admissionRate = totalApplications > 0 
+        ? `${((totalAdmitted / totalApplications) * 100).toFixed(1)}%` 
+        : '0%';
+      
+      setStats({
+        totalApplications: totalApplications,
+        totalAdmitted: totalAdmitted,
+        totalInstitutions: statsData.totalInstitutions || 0,
+        admissionRate: admissionRate
+      });
     } catch (err) {
+      console.error('Error loading admissions data:', err);
       setError(err.message || 'Failed to load admissions data');
+      // Set default values on error
+      setAdmissions([]);
+      setStats({
+        totalApplications: 0,
+        totalAdmitted: 0,
+        totalInstitutions: 0,
+        admissionRate: '0%'
+      });
     } finally {
       setLoading(false);
     }

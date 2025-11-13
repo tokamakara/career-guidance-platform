@@ -1,0 +1,195 @@
+.settings-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.settings-header {
+  margin-bottom: 40px;
+}
+
+.settings-header h1 {
+  font-size: 2rem;
+  color: #333;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.settings-header p {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.settings-form {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.settings-section {
+  margin-bottom: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.settings-section h2 {
+  font-size: 1.5rem;
+  color: #333;
+  margin: 0 0 24px 0;
+  font-weight: 600;
+}
+
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.settings-group:last-child {
+  margin-bottom: 0;
+}
+
+.settings-group label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+.checkbox-label span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.setting-description {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 8px 0 0 0;
+  line-height: 1.5;
+}
+
+.settings-group select {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #333;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.settings-group select:hover {
+  border-color: #007bff;
+}
+
+.settings-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.help-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.help-link {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 8px 16px;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.help-link:hover {
+  background: #007bff;
+  color: white;
+}
+
+.settings-actions {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-save {
+  padding: 12px 32px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 20px 16px;
+  }
+
+  .settings-form {
+    padding: 24px 16px;
+  }
+
+  .settings-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .help-links {
+    flex-direction: column;
+  }
+
+  .help-link {
+    text-align: center;
+  }
+}
+

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api/adminService';
 import Table from '../../components/ui/Table';
+import { useNotification } from '../../context/NotificationContext';
+import { exportToExcel, formatDateRangeForFilename } from '../../utils/exportUtils';
 
 const Reports = () => {
   const [reports, setReports] = useState({});
@@ -23,13 +25,35 @@ const Reports = () => {
       setLoading(true);
       setError('');
       const reportsData = await adminService.getReports(selectedReport, dateRange);
-      setReports(reportsData);
+      
+      // Handle response format
+      if (reportsData && reportsData.success !== false) {
+        // Set reports with proper structure
+        setReports({
+          data: Array.isArray(reportsData.data) ? reportsData.data : [],
+          total: reportsData.total || 0,
+          period: reportsData.period || 'N/A',
+          generatedAt: reportsData.generatedAt
+        });
+      } else {
+        setReports({
+          data: [],
+          total: 0,
+          period: 'N/A',
+          generatedAt: null
+        });
+        setError(reportsData?.message || 'No data available for the selected report');
+      }
     } catch (err) {
-      setError(err.message || 'Failed to load reports');
-      addNotification({
-        type: 'error',
-        title: 'Error',
-        message: err.message || 'Failed to load reports'
+      console.error('Error loading reports:', err);
+      const errorMessage = err.message || 'Failed to load reports';
+      setError(errorMessage);
+      // Set empty reports structure
+      setReports({
+        data: [],
+        total: 0,
+        period: 'N/A',
+        generatedAt: null
       });
     } finally {
       setLoading(false);
@@ -73,9 +97,9 @@ const Reports = () => {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportPDF = async () => {
     try {
-      const data = reports.data || [];
+      const data = Array.isArray(reports.data) ? reports.data : [];
       if (data.length === 0) {
         addNotification({
           type: 'warning',
@@ -85,13 +109,12 @@ const Reports = () => {
         return;
       }
 
-      const filename = `${selectedReport}_report_${formatDateRangeForFilename(dateRange.start, dateRange.end)}`;
-      exportToCSV(data, filename, getColumns());
-      
+      // For now, we'll use a simple approach - generate PDF on client side
+      // In the future, this could call a backend endpoint
       addNotification({
-        type: 'success',
-        title: 'Export Successful',
-        message: 'Report exported to CSV successfully'
+        type: 'info',
+        title: 'PDF Export',
+        message: 'PDF export feature coming soon. Please use Excel export for now.'
       });
     } catch (error) {
       addNotification({
@@ -104,7 +127,7 @@ const Reports = () => {
 
   const handleExportExcel = () => {
     try {
-      const data = reports.data || [];
+      const data = Array.isArray(reports.data) ? reports.data : [];
       if (data.length === 0) {
         addNotification({
           type: 'warning',
@@ -138,48 +161,55 @@ const Reports = () => {
         <p>Comprehensive analytics and reporting</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message">
+          <span className="error-text">{error}</span>
+        </div>
+      )}
 
       <div className="report-controls">
-        <div className="control-group">
-          <label>Report Type:</label>
-          <select 
-            value={selectedReport} 
-            onChange={(e) => setSelectedReport(e.target.value)}
-          >
-            {reportTypes.map(type => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="controls-row">
+          <div className="control-group">
+            <label>Report Type:</label>
+            <select 
+              value={selectedReport} 
+              onChange={(e) => setSelectedReport(e.target.value)}
+              className="report-type-select"
+            >
+              {reportTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="control-group">
-          <label>Start Date:</label>
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-          />
-        </div>
+          <div className="control-group">
+            <label>Start Date:</label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+            />
+          </div>
 
-        <div className="control-group">
-          <label>End Date:</label>
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-          />
-        </div>
+          <div className="control-group">
+            <label>End Date:</label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+            />
+          </div>
 
-        <div className="export-buttons">
-          <button onClick={handleExportCSV} className="export-button btn-export-csv" disabled={loading || !reports.data || reports.data.length === 0}>
-            Export CSV
-          </button>
-          <button onClick={handleExportExcel} className="export-button btn-export-excel" disabled={loading || !reports.data || reports.data.length === 0}>
-            Export Excel
-          </button>
+          <div className="export-buttons">
+            <button onClick={handleExportExcel} className="export-button btn-export-excel" disabled={loading || !Array.isArray(reports.data) || reports.data.length === 0}>
+              Export Excel
+            </button>
+            <button onClick={handleExportPDF} className="export-button btn-export-pdf" disabled={loading || !Array.isArray(reports.data) || reports.data.length === 0}>
+              Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -187,15 +217,23 @@ const Reports = () => {
         <h3>Report Summary</h3>
         <div className="summary-cards">
           <div className="summary-card">
-            <div className="summary-value">{reports.total || 0}</div>
+            <div className="summary-value">{reports.total || (reports.data && reports.data.length) || 0}</div>
             <div className="summary-label">Total Records</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value">{reports.period || 'N/A'}</div>
+            <div className="summary-value">
+              {dateRange.start && dateRange.end 
+                ? `${new Date(dateRange.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(dateRange.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                : 'N/A'}
+            </div>
             <div className="summary-label">Period</div>
           </div>
           <div className="summary-card">
-            <div className="summary-value">{reports.generatedAt ? new Date(reports.generatedAt).toLocaleDateString() : 'N/A'}</div>
+            <div className="summary-value">
+              {reports.generatedAt 
+                ? new Date(reports.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
             <div className="summary-label">Generated</div>
           </div>
         </div>

@@ -27,9 +27,11 @@ const CompanyProfile = () => {
 
   const loadProfile = async () => {
     try {
+      setLoading(true);
       const data = await companyService.getProfile();
       setProfile(data);
     } catch (err) {
+      console.error('Load profile error:', err);
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -54,6 +56,7 @@ const CompanyProfile = () => {
       await companyService.updateProfile(profile);
       setSuccess('Profile updated successfully!');
     } catch (err) {
+      console.error('Update profile error:', err);
       setError(err.message || 'Failed to update profile');
     } finally {
       setSaving(false);

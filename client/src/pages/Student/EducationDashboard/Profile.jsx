@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useNotification } from '../../../context/NotificationContext';
 import { studentService } from '../../../services/api/studentService';
 import './Profile.css';
 
@@ -29,6 +31,8 @@ const EducationProfile = () => {
   const [success, setSuccess] = useState('');
 
   const { currentUser, userProfile, updateProfile } = useAuth();
+  const { addNotification } = useNotification();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProfile();
@@ -44,12 +48,27 @@ const EducationProfile = () => {
       
       // Load from userProfile first
       if (userProfile) {
+        // Handle dateOfBirth - convert to string if it's a Date object or Firestore Timestamp
+        let dateOfBirth = '';
+        if (userProfile.dateOfBirth) {
+          if (userProfile.dateOfBirth.toDate) {
+            // Firestore Timestamp
+            dateOfBirth = userProfile.dateOfBirth.toDate().toISOString().split('T')[0];
+          } else if (userProfile.dateOfBirth instanceof Date) {
+            // Date object
+            dateOfBirth = userProfile.dateOfBirth.toISOString().split('T')[0];
+          } else if (typeof userProfile.dateOfBirth === 'string') {
+            // Already a string - check if it's in correct format
+            dateOfBirth = userProfile.dateOfBirth.split('T')[0]; // Remove time if present
+          }
+        }
+        
         setProfile({
           firstName: userProfile.firstName || '',
           lastName: userProfile.lastName || '',
           email: userProfile.email || currentUser.email || '',
           phone: userProfile.phone || '',
-          dateOfBirth: userProfile.dateOfBirth || '',
+          dateOfBirth: dateOfBirth,
           gender: userProfile.gender || '',
           idNumber: userProfile.idNumber || '',
           address: userProfile.address || '',
@@ -69,9 +88,22 @@ const EducationProfile = () => {
       try {
         const result = await studentService.getStudentProfile();
         if (result && result.success && result.data) {
+          // Handle dateOfBirth from API response
+          let dateOfBirth = result.data.dateOfBirth || '';
+          if (dateOfBirth) {
+            if (dateOfBirth.toDate) {
+              dateOfBirth = dateOfBirth.toDate().toISOString().split('T')[0];
+            } else if (dateOfBirth instanceof Date) {
+              dateOfBirth = dateOfBirth.toISOString().split('T')[0];
+            } else if (typeof dateOfBirth === 'string') {
+              dateOfBirth = dateOfBirth.split('T')[0];
+            }
+          }
+          
           setProfile(prev => ({
             ...prev,
             ...result.data,
+            dateOfBirth: dateOfBirth || prev.dateOfBirth,
             emergencyContact: result.data.emergencyContact || prev.emergencyContact
           }));
         }
@@ -126,11 +158,28 @@ const EducationProfile = () => {
       // Update via API for backend persistence
       await studentService.updateStudentProfile(profile);
       
+      // Show success notification
+      addNotification({
+        type: 'success',
+        title: 'Profile Updated',
+        message: 'Your profile has been successfully updated!'
+      });
+      
       setSuccess('Profile updated successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      
+      // Redirect to dashboard after 1.5 seconds
+      setTimeout(() => {
+        navigate('/student/dashboard');
+      }, 1500);
     } catch (err) {
       console.error('Profile update error:', err);
-      setError(err.message || 'Failed to update profile');
+      const errorMessage = err.message || 'Failed to update profile';
+      setError(errorMessage);
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: errorMessage
+      });
     } finally {
       setSaving(false);
     }

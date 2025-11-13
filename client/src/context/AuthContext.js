@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '../services/firebase/auth';
-import { getIdToken } from 'firebase/auth';
+import { authService as apiAuthService } from '../services/api/authService';
+import { authService as firebaseAuthService } from '../services/firebase/auth';
+import { signInWithEmailAndPassword, getIdToken } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const AuthContext = createContext();
 
@@ -32,7 +34,7 @@ export const AuthProvider = ({ children }) => {
         const checkCurrentUser = () => {
           return new Promise((resolve) => {
             // Use the auth state change listener to get current state
-            const unsubscribe = authService.onAuthStateChange((user) => {
+            const unsubscribe = firebaseAuthService.onAuthStateChange((user) => {
               unsubscribe(); // Immediately unsubscribe after first check
               resolve(user);
             });
@@ -43,6 +45,17 @@ export const AuthProvider = ({ children }) => {
         
         if (existingUser) {
           console.log('✅ User found in persisted session:', existingUser.email);
+          
+          // Check if email is verified (for new registrations)
+          if (!existingUser.emailVerified) {
+            console.warn('⚠️ Email not verified - requiring verification');
+            // Don't set user as authenticated if email is not verified
+            setCurrentUser(null);
+            setUserProfile(null);
+            localStorage.removeItem('authToken');
+            return;
+          }
+          
           setCurrentUser(existingUser);
           
           // Get and store Firebase ID token for API authentication
@@ -57,7 +70,7 @@ export const AuthProvider = ({ children }) => {
           // Step 2: Load user profile from Firestore
           try {
             console.log('📋 Loading user profile data from Firestore...');
-            const profile = await authService.getUserProfile(existingUser.uid);
+            const profile = await firebaseAuthService.getUserProfile(existingUser.uid);
             
             if (profile) {
               console.log('✅ User profile loaded successfully:', {
@@ -74,7 +87,7 @@ export const AuthProvider = ({ children }) => {
               } else if (profile.status === 'suspended') {
                 console.error('❌ Account suspended');
                 setError('Your account has been suspended. Please contact administrator.');
-                await authService.logout();
+                await firebaseAuthService.logout();
                 setCurrentUser(null);
                 setUserProfile(null);
               }
@@ -107,11 +120,22 @@ export const AuthProvider = ({ children }) => {
 
     // Step 3: Set up real-time auth state listener for future changes
     console.log('👂 Setting up real-time auth state listener...');
-    const unsubscribe = authService.onAuthStateChange(async (user) => {
+    const unsubscribe = firebaseAuthService.onAuthStateChange(async (user) => {
       console.log('🔄 Auth state change detected:', user ? `User: ${user.email}` : 'User signed out');
       
       if (user) {
-        // User signed in or changed
+        // Check if email is verified (for new registrations)
+        if (!user.emailVerified) {
+          console.warn('⚠️ Email not verified - signing out user');
+          // Sign out user if email is not verified
+          await firebaseAuthService.logout();
+          setCurrentUser(null);
+          setUserProfile(null);
+          localStorage.removeItem('authToken');
+          return;
+        }
+        
+        // User signed in and verified
         setCurrentUser(user);
         
         // Get and store Firebase ID token for API authentication
@@ -125,7 +149,7 @@ export const AuthProvider = ({ children }) => {
         
         try {
           // Reload profile data on auth state change
-          const profile = await authService.getUserProfile(user.uid);
+          const profile = await firebaseAuthService.getUserProfile(user.uid);
           if (profile) {
             setUserProfile(profile);
             console.log('✅ Profile updated on auth state change');
@@ -134,7 +158,7 @@ export const AuthProvider = ({ children }) => {
             if (profile.status === 'suspended') {
               console.error('❌ Account suspended during session');
               setError('Your account has been suspended. Please contact administrator.');
-              await authService.logout();
+              await firebaseAuthService.logout();
               setCurrentUser(null);
               setUserProfile(null);
             }
@@ -160,7 +184,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Enhanced register function with detailed logging
+  // Enhanced register function with detailed logging - Uses backend API
   const register = async (userData) => {
     console.log('🚀 Starting registration process for:', userData.email);
     console.log('📝 Registration data:', {
@@ -174,15 +198,37 @@ export const AuthProvider = ({ children }) => {
       setError('');
       setLoading(true);
       
-      const result = await authService.register(userData);
+      // Use backend API for registration (creates user in Firebase Auth + Firestore)
+      const result = await apiAuthService.register(userData);
       
       console.log('🎉 Registration successful:', {
-        userId: result.user.uid,
-        emailVerified: result.user.emailVerified,
+        userId: result.data.uid,
+        email: result.data.email,
+        role: result.data.role,
         message: result.message
       });
       
-      return result;
+      // After backend registration, sign in the user with email/password to get Firebase session
+      try {
+        const userCredential = await signInWithEmailAndPassword(
+          auth, 
+          userData.email, 
+          userData.password
+        );
+        
+        // Get ID token for API authentication
+        const idToken = await getIdToken(userCredential.user);
+        localStorage.setItem('authToken', idToken);
+        
+        return {
+          ...result,
+          user: userCredential.user
+        };
+      } catch (signInError) {
+        console.warn('⚠️ Auto sign-in after registration failed:', signInError);
+        // Registration succeeded, but auto sign-in failed - user can sign in manually
+        return result;
+      }
     } catch (error) {
       console.error('💥 Registration failed:', {
         errorCode: error.code,
@@ -198,7 +244,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Enhanced login function with detailed logging
+  // Enhanced login function with detailed logging - Uses backend API
   const login = async (email, password) => {
     console.log('🔐 Attempting login for:', email);
     
@@ -206,7 +252,8 @@ export const AuthProvider = ({ children }) => {
       setError('');
       setLoading(true);
       
-      const result = await authService.login(email, password);
+      // Use backend API for login (handles profile recovery if needed)
+      const result = await apiAuthService.login(email, password);
       
       console.log('✅ Login successful:', {
         userId: result.user.uid,
@@ -238,7 +285,7 @@ export const AuthProvider = ({ children }) => {
       setError('');
       console.log('📤 Calling Firebase logout...');
       
-      await authService.logout();
+      await firebaseAuthService.logout();
       
       console.log('✅ Logout successful - local state cleared');
     } catch (error) {
@@ -256,7 +303,7 @@ export const AuthProvider = ({ children }) => {
       setError('');
       setLoading(true);
       
-      const result = await authService.loginWithGoogle();
+      const result = await firebaseAuthService.loginWithGoogle();
       
       console.log('✅ Google login successful:', {
         userId: result.user.uid,
@@ -282,7 +329,7 @@ export const AuthProvider = ({ children }) => {
     
     try {
       setError('');
-      const result = await authService.updateUserProfile(currentUser.uid, updates);
+      const result = await firebaseAuthService.updateUserProfile(currentUser.uid, updates);
       
       // Update local state
       setUserProfile(prev => {
@@ -305,7 +352,7 @@ export const AuthProvider = ({ children }) => {
     
     try {
       setError('');
-      const result = await authService.resetPassword(email);
+      const result = await firebaseAuthService.resetPassword(email);
       console.log('✅ Password reset email sent successfully');
       return result;
     } catch (error) {
@@ -345,6 +392,20 @@ export const AuthProvider = ({ children }) => {
       if (!currentUser || !userProfile) return false;
       if (userProfile.status !== 'active') return false;
       return ['student', 'institute', 'company', 'admin'].includes(userProfile.role);
+    },
+    // Resend email verification
+    resendEmailVerification: async () => {
+      try {
+        setError('');
+        setLoading(true);
+        const result = await firebaseAuthService.resendEmailVerification();
+        return result;
+      } catch (error) {
+        setError(error.message);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

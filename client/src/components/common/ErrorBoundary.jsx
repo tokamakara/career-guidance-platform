@@ -11,6 +11,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    // Force error to console - use multiple methods to ensure visibility
     console.error('🔴 Error caught by ErrorBoundary:', error);
     console.error('Error details:', errorInfo);
     console.error('Error stack:', error.stack);
@@ -23,6 +24,21 @@ class ErrorBoundary extends React.Component {
     if (error.stack) {
       console.error('Error stack trace:', error.stack);
     }
+    
+    // Also log to window for debugging
+    window.lastError = {
+      error,
+      errorInfo,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Force console to show errors even if filtered
+    setTimeout(() => {
+      console.error('=== ERROR BOUNDARY ERROR ===');
+      console.error('Error:', error);
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
+    }, 100);
   }
 
   render() {

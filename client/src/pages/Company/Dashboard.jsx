@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService } from '../../services/api/companyService';
 import { Link } from 'react-router-dom';
+import './Dashboard.css';
 
 const CompanyDashboard = () => {
   const [stats, setStats] = useState({});
@@ -10,7 +11,7 @@ const CompanyDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   useEffect(() => {
     loadDashboardData();
@@ -19,16 +20,41 @@ const CompanyDashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [dashboardStats, jobs, applicants] = await Promise.all([
-        companyService.getDashboard(),
-        companyService.getCompanyJobs(),
-        companyService.getRecentApplicants()
-      ]);
+      setError('');
+      
+      // Get dashboard stats
+      const statsResponse = await companyService.getDashboardStats();
+      const dashboardStats = statsResponse.data || statsResponse || {};
+      
+      // Get jobs
+      const jobs = await companyService.getCompanyJobs();
+      
+      // Get recent applicants (from all jobs)
+      let allApplicants = [];
+      try {
+        // Get applicants from all jobs
+        for (const job of jobs.slice(0, 5)) {
+          try {
+            const applicants = await companyService.getJobApplicants(job.id);
+            if (applicants && applicants.data) {
+              allApplicants.push(...(Array.isArray(applicants.data) ? applicants.data : []));
+            } else if (Array.isArray(applicants)) {
+              allApplicants.push(...applicants);
+            }
+          } catch (err) {
+            // Skip if job has no applicants
+            console.warn(`Failed to fetch applicants for job ${job.id}:`, err.message);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch recent applicants:', err.message);
+      }
 
       setStats(dashboardStats);
-      setRecentJobs(jobs.slice(0, 5));
-      setRecentApplicants(applicants.slice(0, 5));
+      setRecentJobs(Array.isArray(jobs) ? jobs.slice(0, 5) : []);
+      setRecentApplicants(allApplicants.slice(0, 5));
     } catch (err) {
+      console.error('Dashboard load error:', err);
       setError(err.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -37,6 +63,11 @@ const CompanyDashboard = () => {
 
   if (loading) {
     return <div className="loading">Loading dashboard...</div>;
+  }
+
+  // If pending, this should be blocked by ProtectedRoute, but just in case
+  if (userProfile?.status === 'pending') {
+    return null; // ProtectedRoute will handle showing PendingApproval
   }
 
   return (
@@ -51,7 +82,6 @@ const CompanyDashboard = () => {
       {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card primary">
-          <div className="stat-icon">💼</div>
           <div className="stat-content">
             <div className="stat-value">{stats.activeJobs || 0}</div>
             <div className="stat-label">Active Jobs</div>
@@ -59,7 +89,6 @@ const CompanyDashboard = () => {
         </div>
 
         <div className="stat-card success">
-          <div className="stat-icon">👥</div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalApplicants || 0}</div>
             <div className="stat-label">Total Applicants</div>
@@ -67,7 +96,6 @@ const CompanyDashboard = () => {
         </div>
 
         <div className="stat-card warning">
-          <div className="stat-icon">⭐</div>
           <div className="stat-content">
             <div className="stat-value">{stats.shortlisted || 0}</div>
             <div className="stat-label">Shortlisted</div>
@@ -75,7 +103,6 @@ const CompanyDashboard = () => {
         </div>
 
         <div className="stat-card info">
-          <div className="stat-icon">📊</div>
           <div className="stat-content">
             <div className="stat-value">{stats.matchRate || '0%'}</div>
             <div className="stat-label">Avg Match Rate</div>
@@ -124,7 +151,28 @@ const CompanyDashboard = () => {
                   <div className="job-info">
                     <h4>{job.title}</h4>
                     <p className="job-meta">
-                      Posted: {new Date(job.createdAt).toLocaleDateString()} • 
+                      Posted: {(() => {
+                        if (!job.createdAt) return 'N/A';
+                        try {
+                          let date;
+                          if (job.createdAt && typeof job.createdAt === 'object') {
+                            if (job.createdAt.seconds) {
+                              date = new Date(job.createdAt.seconds * 1000);
+                            } else if (job.createdAt.toDate && typeof job.createdAt.toDate === 'function') {
+                              date = job.createdAt.toDate();
+                            } else if (job.createdAt._seconds) {
+                              date = new Date(job.createdAt._seconds * 1000);
+                            } else {
+                              date = new Date(job.createdAt);
+                            }
+                          } else {
+                            date = new Date(job.createdAt);
+                          }
+                          return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                        } catch (e) {
+                          return 'N/A';
+                        }
+                      })()} • 
                       Applicants: {job.applicants || 0}
                     </p>
                     <span className={`job-status ${job.status}`}>
@@ -132,7 +180,7 @@ const CompanyDashboard = () => {
                     </span>
                   </div>
                   <div className="job-actions">
-                    <Link to={`/company/jobs/${job.id}`} className="view-btn">
+                    <Link to={`/company/applicants?jobId=${job.id}`} className="view-btn">
                       View
                     </Link>
                   </div>

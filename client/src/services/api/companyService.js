@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL } from '../../utils/apiConfig';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -181,6 +180,36 @@ export const companyService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
+    }
+  },
+
+  // Get filtered candidates based on criteria
+  async getFilteredCandidates(filters = {}) {
+    try {
+      const response = await api.get('/company/candidates/filtered', { params: filters });
+      return response.data.data || response.data || [];
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch filtered candidates');
+    }
+  },
+
+  // Get profile (for company profile page)
+  async getProfile() {
+    try {
+      const response = await api.get('/company/profile');
+      return response.data.data || response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch company profile');
+    }
+  },
+
+  // Update profile
+  async updateProfile(profileData) {
+    try {
+      const response = await api.put('/company/profile', profileData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update company profile');
     }
   }
 };

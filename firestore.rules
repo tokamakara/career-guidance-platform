@@ -1,0 +1,281 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to get user data (cached for performance)
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'admin';
+    }
+    
+    // Helper function to check if user has specific role
+    function hasRole(role) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == role;
+    }
+    
+    // Helper function to check if user's account is active (not suspended)
+    // Returns true if user doesn't exist yet (for registration) or if status is not 'suspended'
+    function isActive() {
+      return isAuthenticated() && 
+             (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+              getUserData().status != 'suspended');
+    }
+    
+    // Helper function to check if user exists and is active (for updates)
+    function existsAndActive() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().status != 'suspended';
+    }
+    
+    // Users Collection
+    match /users/{userId} {
+      // Allow users to read their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow authenticated users to create their own profile during registration
+      // This is the key rule that fixes the "Missing or insufficient permissions" error
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) && 
+                       // Ensure they're creating their own profile (uid field must match userId OR be missing)
+                       (!('uid' in request.resource.data) || request.resource.data.uid == userId) &&
+                       // Required fields must be present
+                       request.resource.data.keys().hasAll(['email', 'firstName', 'lastName', 'role']) &&
+                       // Status validation: 'pending' for companies/institutes, 'active' or missing for students
+                       ((request.resource.data.role == 'student' && 
+                         (!('status' in request.resource.data) || request.resource.data.status == 'active')) ||
+                        ((request.resource.data.role == 'company' || request.resource.data.role == 'institute') &&
+                         (!('status' in request.resource.data) || request.resource.data.status == 'pending'))) &&
+                       // Email must match authenticated user's email
+                       request.resource.data.email == request.auth.token.email;
+      
+      // Allow users to update their own profile (with restrictions)
+      allow update: if isOwner(userId) && 
+                       isActive() &&
+                       // Cannot change their own role or status (admin only)
+                       request.resource.data.role == resource.data.role &&
+                       (request.resource.data.status == resource.data.status || 
+                        hasRole('admin')) &&
+                       // Cannot change email or uid
+                       request.resource.data.email == resource.data.email &&
+                       request.resource.data.uid == resource.data.uid;
+      
+      // Admin can update any user
+      allow update: if isAdmin();
+      
+      // Admin can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Companies Collection
+    match /companies/{companyId} {
+      // Allow company to read their own data
+      allow read: if isOwner(companyId) || isAdmin() || hasRole('student');
+      
+      // Allow authenticated users to create their own company record during registration
+      allow create: if isAuthenticated() && 
+                       isOwner(companyId) &&
+                       // Ensure they're creating their own company record
+                       request.resource.data.id == companyId &&
+                       request.resource.data.adminId == companyId &&
+                       // Required fields
+                       request.resource.data.keys().hasAll(['name', 'industry', 'contactEmail', 'status']) &&
+                       // Status must be 'pending' for new registrations
+                       request.resource.data.status == 'pending' &&
+                       // Contact email must match authenticated user's email
+                       request.resource.data.contactEmail == request.auth.token.email;
+      
+      // Allow company to update their own data
+      allow update: if isOwner(companyId) && 
+                       isActive() &&
+                       // Cannot change id or adminId
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.adminId == resource.data.adminId;
+      
+      // Admin can read/update/delete any company
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // Institutions Collection
+    match /institutions/{institutionId} {
+      // Allow institution to read their own data
+      allow read: if isOwner(institutionId) || isAdmin() || hasRole('student');
+      
+      // Allow authenticated users to create their own institution record during registration
+      allow create: if isAuthenticated() && 
+                       isOwner(institutionId) &&
+                       // Ensure they're creating their own institution record
+                       (!('id' in request.resource.data) || request.resource.data.id == institutionId) &&
+                       (!('adminId' in request.resource.data) || request.resource.data.adminId == institutionId) &&
+                       // Required fields (status is optional, will default to pending)
+                       request.resource.data.keys().hasAll(['name', 'type', 'contactEmail']) &&
+                       // Status must be 'pending' for new registrations (or missing, will be set to pending)
+                       (!('status' in request.resource.data) || request.resource.data.status == 'pending') &&
+                       // Contact email must match authenticated user's email
+                       request.resource.data.contactEmail == request.auth.token.email;
+      
+      // Allow institution to update their own data
+      allow update: if isOwner(institutionId) && 
+                       isActive() &&
+                       // Cannot change id or adminId
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.adminId == resource.data.adminId;
+      
+      // Admin can read/update/delete any institution
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // Jobs Collection
+    match /jobs/{jobId} {
+      // Allow company to read their own jobs
+      allow read: if isAuthenticated() && 
+                     (resource.data.companyId == request.auth.uid || 
+                      hasRole('student') || 
+                      isAdmin());
+      
+      // Allow company to create jobs
+      allow create: if hasRole('company') && 
+                       isActive() &&
+                       // Company ID must match authenticated user
+                       request.resource.data.companyId == request.auth.uid;
+      
+      // Allow company to update/delete their own jobs
+      allow update, delete: if hasRole('company') && 
+                               isActive() && 
+                               resource.data.companyId == request.auth.uid;
+      
+      // Admin can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Education Applications Collection
+    match /educationApplications/{applicationId} {
+      // Allow students to read their own applications
+      allow read: if isAuthenticated() && 
+                     (resource.data.studentId == request.auth.uid || 
+                      resource.data.institutionId == request.auth.uid ||
+                      isAdmin());
+      
+      // Allow students to create applications
+      allow create: if hasRole('student') && 
+                       isActive() &&
+                       // Student ID must match authenticated user
+                       request.resource.data.studentId == request.auth.uid;
+      
+      // Allow students to update their own applications (limited)
+      allow update: if hasRole('student') && 
+                       isActive() && 
+                       resource.data.studentId == request.auth.uid &&
+                       // Cannot change studentId or institutionId
+                       request.resource.data.studentId == resource.data.studentId &&
+                       request.resource.data.institutionId == resource.data.institutionId;
+      
+      // Allow institutions to update applications for their courses
+      allow update: if hasRole('institute') && 
+                       isActive() && 
+                       resource.data.institutionId == request.auth.uid;
+      
+      // Admin can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Job Applications Collection
+    match /jobApplications/{applicationId} {
+      // Allow students to read their own applications
+      allow read: if isAuthenticated() && 
+                     (resource.data.studentId == request.auth.uid || 
+                      resource.data.companyId == request.auth.uid ||
+                      isAdmin());
+      
+      // Allow students to create applications
+      allow create: if hasRole('student') && 
+                       isActive() &&
+                       // Student ID must match authenticated user
+                       request.resource.data.studentId == request.auth.uid;
+      
+      // Allow students to update their own applications (limited)
+      allow update: if hasRole('student') && 
+                       isActive() && 
+                       resource.data.studentId == request.auth.uid &&
+                       // Cannot change studentId or companyId
+                       request.resource.data.studentId == resource.data.studentId &&
+                       request.resource.data.companyId == resource.data.companyId;
+      
+      // Allow companies to update applications for their jobs
+      allow update: if hasRole('company') && 
+                       isActive() && 
+                       resource.data.companyId == request.auth.uid;
+      
+      // Admin can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // Allow users to read their own notifications
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Allow system to create notifications (via backend)
+      // Note: Client-side creation should be limited, prefer backend API
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Allow users to update their own notifications (e.g., mark as read)
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid &&
+                       // Can only update read status
+                       request.resource.data.keys().hasOnly(['read', 'readAt']) ||
+                       request.resource.data == resource.data;
+      
+      // Admin can do everything
+      allow read, write: if isAdmin();
+    }
+    
+    // Institution Subcollections (Faculties and Courses)
+    match /institutions/{institutionId}/faculties/{facultyId} {
+      // Allow institution to manage their faculties
+      allow read: if isAuthenticated() && 
+                     (isOwner(institutionId) || hasRole('student') || isAdmin());
+      allow write: if hasRole('institute') && 
+                      isActive() && 
+                      isOwner(institutionId);
+      allow read, write: if isAdmin();
+      
+      // Courses subcollection
+      match /courses/{courseId} {
+        allow read: if isAuthenticated() && 
+                       (isOwner(institutionId) || hasRole('student') || isAdmin());
+        allow write: if hasRole('institute') && 
+                        isActive() && 
+                        isOwner(institutionId);
+        allow read, write: if isAdmin();
+      }
+    }
+    
+    // Default: Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

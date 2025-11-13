@@ -226,14 +226,16 @@ export const validateForm = (formData, validationRules) => {
       for (const rule of rules) {
         const error = rule(value, formData);
         if (error) {
-          errors[field] = error;
+          // Ensure error is always a string
+          errors[field] = typeof error === 'string' ? error : String(error);
           break;
         }
       }
     } else if (typeof rules === 'function') {
       const error = rules(value, formData);
       if (error) {
-        errors[field] = error;
+        // Ensure error is always a string
+        errors[field] = typeof error === 'string' ? error : String(error);
       }
     } else if (typeof rules === 'object') {
       // Handle nested objects (like salaryRange: {min, max})
@@ -245,7 +247,8 @@ export const validateForm = (formData, validationRules) => {
           for (const rule of subRules) {
             const error = rule(subValue, formData);
             if (error) {
-              errors[`${field}.${subField}`] = error;
+              // Ensure error is always a string
+              errors[`${field}.${subField}`] = typeof error === 'string' ? error : String(error);
               break;
             }
           }
@@ -276,8 +279,13 @@ export const validateInput = (value, rules, formData = {}) => {
 // Common validation schemas
 export const validationSchemas = {
   login: {
-    email: [validators.required, validators.email],
-    password: [validators.required]
+    email: [
+      (value) => validators.required(value, 'Email address'),
+      validators.email
+    ],
+    password: [
+      (value) => validators.required(value, 'Password')
+    ]
   },
 
   register: {
@@ -292,7 +300,10 @@ export const validationSchemas = {
       },
       validators.email
     ],
-    password: [validators.required, validators.password],
+    password: [
+      (value) => validators.required(value, 'Password'),
+      validators.password
+    ],
     confirmPassword: [(value, formData) => validators.confirmPassword(value, formData.password)],
     role: [(value) => {
       if (!value || value.toString().trim() === '') {

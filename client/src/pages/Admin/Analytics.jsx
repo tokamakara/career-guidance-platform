@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api/adminService';
 import { useNotification } from '../../context/NotificationContext';
-import { exportToCSV, formatDateRangeForFilename } from '../../utils/exportUtils';
+import { exportToExcel, formatDateRangeForFilename } from '../../utils/exportUtils';
 import {
   BarChart,
   Bar,
@@ -418,11 +418,11 @@ const Analytics = () => {
                         };
                       });
                       const filename = `${activeTab}_analytics_${formatDateRangeForFilename(dateRange.startDate, dateRange.endDate)}`;
-                      exportToCSV(statsData, filename);
+                      exportToExcel(statsData, filename);
                       addNotification({
                         type: 'success',
                         title: 'Export Successful',
-                        message: 'Analytics exported to CSV successfully'
+                        message: 'Analytics exported to Excel successfully'
                       });
                     } catch (error) {
                       addNotification({
@@ -432,9 +432,9 @@ const Analytics = () => {
                       });
                     }
                   }}
-                  className="btn-export-csv"
+                  className="btn-export-excel"
                 >
-                  Export Statistics CSV
+                  Export Statistics Excel
                 </button>
               </div>
               <div className="stats-table">
@@ -467,7 +467,7 @@ const Analytics = () => {
           {/* Empty State */}
           {!loading && Object.keys(analytics).length === 0 && (
             <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
+              <div className="empty-state-icon"></div>
               <h3>No Analytics Data Available</h3>
               <p>
                 {dateRange.startDate || dateRange.endDate

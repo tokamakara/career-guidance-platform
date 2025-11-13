@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useSearchParams } from 'react-router-dom';
 import { companyService } from '../../services/api/companyService';
 import Table from '../../components/ui/Table';
 
@@ -12,12 +13,26 @@ const Applicants = () => {
   const [error, setError] = useState('');
   const [selectedApplicants, setSelectedApplicants] = useState([]);
   const [bulkAction, setBulkAction] = useState('');
+  const [searchParams] = useSearchParams();
 
   const { user } = useAuth();
 
   useEffect(() => {
     loadJobs();
   }, []);
+
+  useEffect(() => {
+    // Check if jobId is in URL params
+    const jobIdFromUrl = searchParams.get('jobId');
+    if (jobIdFromUrl && jobs.length > 0) {
+      const jobExists = jobs.find(job => job.id === jobIdFromUrl);
+      if (jobExists) {
+        setSelectedJob(jobIdFromUrl);
+      }
+    } else if (jobs.length > 0 && !selectedJob) {
+      setSelectedJob(jobs[0].id);
+    }
+  }, [jobs, searchParams]);
 
   useEffect(() => {
     if (selectedJob) {

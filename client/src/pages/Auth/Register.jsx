@@ -19,6 +19,7 @@ const Register = () => {
     institutionType: 'university',
     companyName: '',
     industry: '',
+    size: '',
     phone: '',
     highSchool: ''
   });
@@ -125,11 +126,25 @@ const Register = () => {
       if (fieldName === 'password' || fieldName === 'confirmPassword') {
         validationRule = validationSchemas.register[fieldName];
       } else if (fieldName === 'highSchool' && formData.role === 'student') {
-        validationRule = [validators.required];
-      } else if ((fieldName === 'institutionName' || fieldName === 'phone') && formData.role === 'institute') {
-        validationRule = [validators.required];
-      } else if ((fieldName === 'companyName' || fieldName === 'industry' || fieldName === 'phone') && formData.role === 'company') {
-        validationRule = [validators.required];
+        validationRule = [(value) => validators.required(value, 'High school name')];
+      } else if (fieldName === 'institutionName' && formData.role === 'institute') {
+        validationRule = [(value) => validators.organizationName(value, 'Institution name')];
+      } else if (fieldName === 'phone' && formData.role === 'institute') {
+        validationRule = [
+          (value) => validators.required(value, 'Phone number'),
+          validators.phone
+        ];
+      } else if (fieldName === 'companyName' && formData.role === 'company') {
+        validationRule = [(value) => validators.organizationName(value, 'Company name')];
+      } else if (fieldName === 'industry' && formData.role === 'company') {
+        validationRule = [(value) => validators.required(value, 'Industry')];
+      } else if (fieldName === 'size' && formData.role === 'company') {
+        validationRule = [(value) => validators.required(value, 'Company size')];
+      } else if (fieldName === 'phone' && formData.role === 'company') {
+        validationRule = [
+          (value) => validators.required(value, 'Phone number'),
+          validators.phone
+        ];
       }
     }
 
@@ -184,14 +199,21 @@ const Register = () => {
 
     // Add role-specific validations
     if (formData.role === 'student') {
-      validationRules.highSchool = [validators.required];
+      validationRules.highSchool = [(value) => validators.required(value, 'High school name')];
     } else if (formData.role === 'institute') {
-      validationRules.institutionName = [validators.required];
-      validationRules.phone = [validators.required, validators.phone];
+      validationRules.institutionName = [(value) => validators.organizationName(value, 'Institution name')];
+      validationRules.phone = [
+        (value) => validators.required(value, 'Phone number'),
+        validators.phone
+      ];
     } else if (formData.role === 'company') {
-      validationRules.companyName = [validators.required];
-      validationRules.industry = [validators.required];
-      validationRules.phone = [validators.required, validators.phone];
+      validationRules.companyName = [(value) => validators.organizationName(value, 'Company name')];
+      validationRules.industry = [(value) => validators.required(value, 'Industry')];
+      validationRules.size = [(value) => validators.required(value, 'Company size')];
+      validationRules.phone = [
+        (value) => validators.required(value, 'Phone number'),
+        validators.phone
+      ];
     }
 
     const { errors: newErrors, isValid } = validateForm(formData, validationRules);
@@ -229,7 +251,9 @@ const Register = () => {
               disabled={loading}
             />
             {getFieldError('highSchool') && (
-              <span className="error-text">{errors.highSchool}</span>
+              <span className="error-text">
+                {typeof errors.highSchool === 'string' ? errors.highSchool : 'High school name is required'}
+              </span>
             )}
           </div>
         );
@@ -250,7 +274,9 @@ const Register = () => {
                 disabled={loading}
               />
               {getFieldError('institutionName') && (
-                <span className="error-text">{errors.institutionName}</span>
+                <span className="error-text">
+                  {typeof errors.institutionName === 'string' ? errors.institutionName : 'Institution name is required'}
+                </span>
               )}
             </div>
             <div className="form-group">
@@ -304,7 +330,9 @@ const Register = () => {
                 disabled={loading}
               />
               {getFieldError('companyName') && (
-                <span className="error-text">{errors.companyName}</span>
+                <span className="error-text">
+                  {typeof errors.companyName === 'string' ? errors.companyName : 'Company name is required'}
+                </span>
               )}
             </div>
             <div className="form-group">
@@ -327,7 +355,33 @@ const Register = () => {
                 <option value="other">Other</option>
               </select>
               {getFieldError('industry') && (
-                <span className="error-text">{errors.industry}</span>
+                <span className="error-text">
+                  {typeof errors.industry === 'string' ? errors.industry : 'Industry is required'}
+                </span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="size">Company Size *</label>
+              <select
+                id="size"
+                name="size"
+                value={formData.size}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={getFieldError('size') ? 'error' : ''}
+                disabled={loading}
+              >
+                <option value="">Select Company Size</option>
+                <option value="1-10">1-10 employees</option>
+                <option value="11-50">11-50 employees</option>
+                <option value="51-200">51-200 employees</option>
+                <option value="201-500">201-500 employees</option>
+                <option value="501+">501+ employees</option>
+              </select>
+              {getFieldError('size') && (
+                <span className="error-text">
+                  {typeof errors.size === 'string' ? errors.size : 'Company size is required'}
+                </span>
               )}
             </div>
             <div className="form-group">
@@ -344,7 +398,9 @@ const Register = () => {
                 disabled={loading}
               />
               {getFieldError('phone') && (
-                <span className="error-text">{errors.phone}</span>
+                <span className="error-text">
+                  {typeof errors.phone === 'string' ? errors.phone : 'Phone number is required'}
+                </span>
               )}
             </div>
           </>
@@ -389,9 +445,16 @@ const Register = () => {
       addNotification({
         type: 'success',
         title: 'Sign Up Successful',
-        message: 'Please check your email for verification. Your account will be activated after admin approval if required.'
+        message: 'Please check your email inbox to verify your email address. You must verify your email before you can log in.'
       });
-      navigate('/login');
+      // Navigate to login with state to show message and allow resend
+      navigate('/login', { 
+        state: { 
+          message: 'Please check your email inbox to verify your email address. You must verify your email before you can log in. If you don\'t see the email, check your spam folder or click "Resend verification email" below.',
+          email: formData.email,
+          showResend: true
+        } 
+      });
     } catch (error) {
       addNotification({
         type: 'error',
@@ -430,11 +493,13 @@ const Register = () => {
                     placeholder="Enter your first name"
                     className={getFieldError('firstName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-zÀ-ÿ\s'-]+"
+                    pattern="[A-Za-z\s'-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('firstName') && (
-                    <span className="error-text">{errors.firstName}</span>
+                    <span className="error-text">
+                      {typeof errors.firstName === 'string' ? errors.firstName : 'First name is required'}
+                    </span>
                   )}
                 </div>
                 <div className="form-group">
@@ -450,11 +515,13 @@ const Register = () => {
                     placeholder="Enter your last name"
                     className={getFieldError('lastName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-zÀ-ÿ\s'-]+"
+                    pattern="[A-Za-z\s'-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('lastName') && (
-                    <span className="error-text">{errors.lastName}</span>
+                    <span className="error-text">
+                      {typeof errors.lastName === 'string' ? errors.lastName : 'Last name is required'}
+                    </span>
                   )}
                 </div>
               </div>
@@ -473,7 +540,9 @@ const Register = () => {
                   disabled={loading}
                 />
                 {getFieldError('email') && (
-                  <span className="error-text">{errors.email}</span>
+                  <span className="error-text">
+                    {typeof errors.email === 'string' ? errors.email : 'Email address is required'}
+                  </span>
                 )}
               </div>
 
@@ -494,7 +563,9 @@ const Register = () => {
                   <option value="company">Company</option>
                 </select>
                 {getFieldError('role') && (
-                  <span className="error-text">{errors.role}</span>
+                  <span className="error-text">
+                    {typeof errors.role === 'string' ? errors.role : 'Role is required'}
+                  </span>
                 )}
               </div>
 
@@ -527,7 +598,9 @@ const Register = () => {
                   disabled={loading}
                 />
                 {getFieldError('password') && (
-                  <span className="error-text">{errors.password}</span>
+                  <span className="error-text">
+                    {typeof errors.password === 'string' ? errors.password : 'Password is required'}
+                  </span>
                 )}
               </div>
 
@@ -545,7 +618,9 @@ const Register = () => {
                   disabled={loading}
                 />
                 {getFieldError('confirmPassword') && (
-                  <span className="error-text">{errors.confirmPassword}</span>
+                  <span className="error-text">
+                    {typeof errors.confirmPassword === 'string' ? errors.confirmPassword : 'Please confirm your password'}
+                  </span>
                 )}
               </div>
 

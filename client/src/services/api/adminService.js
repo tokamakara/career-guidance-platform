@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL } from '../../utils/apiConfig';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -27,10 +26,31 @@ export const adminService = {
   // Get dashboard statistics
   async getDashboardStats() {
     try {
-      const response = await api.get('/admin/dashboard');
+      console.log('📡 Calling /admin/dashboard API...');
+      console.log('🌐 API Base URL:', api.defaults.baseURL);
+      const response = await api.get('/admin/dashboard', {
+        timeout: 30000 // 30 second timeout (Render can be slow on first request)
+      });
+      console.log('✅ Dashboard API response:', response.data);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
+      console.error('❌ Dashboard API error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timeout. Please check your connection and try again.');
+      } else if (error.response?.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        throw new Error('Access denied. You do not have permission to view the dashboard.');
+      } else if (error.response?.status === 404) {
+        throw new Error('Dashboard endpoint not found. Please contact support.');
+      } else if (error.response?.status >= 500) {
+        throw new Error('Server error. Please try again later.');
+      }
+      throw new Error(error.response?.data?.message || error.message || 'Failed to fetch dashboard statistics');
     }
   },
 
@@ -255,6 +275,51 @@ export const adminService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch admission statistics');
+    }
+  },
+
+  // Get admissions report (for Admissions Monitor)
+  async getAdmissionsReport() {
+    try {
+      // Use getInstituteApplications to get admission data
+      const response = await this.getInstituteApplications({});
+      
+      if (response.success && response.data) {
+        // Transform the data to match what AdmissionsMonitor expects
+        const admissionsData = response.data.map(app => ({
+          institutionName: app.institutionName || 'Unknown',
+          courseName: app.courseName || 'Unknown',
+          totalApplications: 1, // Each app is one application
+          admitted: app.status === 'admitted' || app.status === 'accepted' ? 1 : 0,
+          waitlist: app.status === 'waiting' || app.status === 'waitlisted' ? 1 : 0
+        }));
+
+        // Group by institution and course
+        const grouped = {};
+        admissionsData.forEach(item => {
+          const key = `${item.institutionName}-${item.courseName}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              institutionName: item.institutionName,
+              courseName: item.courseName,
+              totalApplications: 0,
+              admitted: 0,
+              waitlist: 0
+            };
+          }
+          grouped[key].totalApplications += item.totalApplications;
+          grouped[key].admitted += item.admitted;
+          grouped[key].waitlist += item.waitlist;
+        });
+
+        return Object.values(grouped);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error getting admissions report:', error);
+      // Return empty array on error instead of throwing
+      return [];
     }
   },
 

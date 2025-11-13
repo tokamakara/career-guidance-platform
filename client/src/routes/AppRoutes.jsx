@@ -52,13 +52,17 @@ const StudentSettings = React.lazy(() => import('../pages/Student/Shared/Setting
 
 // Layouts
 import StudentLayout from '../layouts/StudentLayout';
+import CompanyLayout from '../layouts/CompanyLayout';
+import AdminLayout from '../layouts/AdminLayout';
 
 // Company Pages
 import CompanyDashboard from '../pages/Company/Dashboard';
 import PostJob from '../pages/Company/PostJob';
+import CompanyJobs from '../pages/Company/Jobs';
 import CompanyApplicants from '../pages/Company/Applicants';
 import FilteredCandidates from '../pages/Company/FilteredCandidates';
 import CompanyProfile from '../pages/Company/Profile';
+import CompanySettings from '../pages/Company/Settings';
 
 // Error Pages
 import ErrorPage from '../pages/ErrorPage';
@@ -99,7 +103,7 @@ const SettingsRedirect = () => {
     case 'institute':
       return <Navigate to="/institute/profile" replace />;
     case 'company':
-      return <Navigate to="/company/profile" replace />;
+      return <Navigate to="/company/settings" replace />;
     case 'admin':
       return <Navigate to="/admin/dashboard" replace />;
     default:
@@ -130,7 +134,9 @@ const AppRoutes = () => {
         path="/admin/dashboard"
         element={
           <ProtectedRoute requiredRole="admin">
-            <AdminDashboard />
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -138,7 +144,9 @@ const AppRoutes = () => {
         path="/admin/institutions"
         element={
           <ProtectedRoute requiredRole="admin">
-            <ManageInstitutions />
+            <AdminLayout>
+              <ManageInstitutions />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -146,7 +154,9 @@ const AppRoutes = () => {
         path="/admin/companies"
         element={
           <ProtectedRoute requiredRole="admin">
-            <ManageCompanies />
+            <AdminLayout>
+              <ManageCompanies />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -154,7 +164,9 @@ const AppRoutes = () => {
         path="/admin/reports"
         element={
           <ProtectedRoute requiredRole="admin">
-            <Reports />
+            <AdminLayout>
+              <Reports />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -162,7 +174,9 @@ const AppRoutes = () => {
         path="/admin/admissions"
         element={
           <ProtectedRoute requiredRole="admin">
-            <AdmissionsMonitor />
+            <AdminLayout>
+              <AdmissionsMonitor />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -170,7 +184,9 @@ const AppRoutes = () => {
         path="/admin/applications-overview"
         element={
           <ProtectedRoute requiredRole="admin">
-            <ApplicationsOverview />
+            <AdminLayout>
+              <ApplicationsOverview />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -178,7 +194,9 @@ const AppRoutes = () => {
         path="/admin/analytics"
         element={
           <ProtectedRoute requiredRole="admin">
-            <Analytics />
+            <AdminLayout>
+              <Analytics />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
@@ -368,7 +386,19 @@ const AppRoutes = () => {
         path="/company/dashboard"
         element={
           <ProtectedRoute requiredRole="company">
-            <CompanyDashboard />
+            <CompanyLayout>
+              <CompanyDashboard />
+            </CompanyLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/company/jobs"
+        element={
+          <ProtectedRoute requiredRole="company">
+            <CompanyLayout>
+              <CompanyJobs />
+            </CompanyLayout>
           </ProtectedRoute>
         }
       />
@@ -376,7 +406,9 @@ const AppRoutes = () => {
         path="/company/post-job"
         element={
           <ProtectedRoute requiredRole="company">
-            <PostJob />
+            <CompanyLayout>
+              <PostJob />
+            </CompanyLayout>
           </ProtectedRoute>
         }
       />
@@ -384,7 +416,9 @@ const AppRoutes = () => {
         path="/company/applicants"
         element={
           <ProtectedRoute requiredRole="company">
-            <CompanyApplicants />
+            <CompanyLayout>
+              <CompanyApplicants />
+            </CompanyLayout>
           </ProtectedRoute>
         }
       />
@@ -392,7 +426,9 @@ const AppRoutes = () => {
         path="/company/candidates"
         element={
           <ProtectedRoute requiredRole="company">
-            <FilteredCandidates />
+            <CompanyLayout>
+              <FilteredCandidates />
+            </CompanyLayout>
           </ProtectedRoute>
         }
       />
@@ -400,7 +436,19 @@ const AppRoutes = () => {
         path="/company/profile"
         element={
           <ProtectedRoute requiredRole="company">
-            <CompanyProfile />
+            <CompanyLayout>
+              <CompanyProfile />
+            </CompanyLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/company/settings"
+        element={
+          <ProtectedRoute requiredRole="company">
+            <CompanyLayout>
+              <CompanySettings />
+            </CompanyLayout>
           </ProtectedRoute>
         }
       />

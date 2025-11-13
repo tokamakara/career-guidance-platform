@@ -6,23 +6,28 @@ class CompanyController {
     try {
       const companyId = req.user.uid;
 
-      const companyDoc = await db.collection('companies').doc(companyId).get();
       const userDoc = await db.collection('users').doc(companyId).get();
 
-      if (!companyDoc.exists || !userDoc.exists) {
+      if (!userDoc.exists) {
         return res.status(404).json({
           success: false,
           message: 'Company profile not found'
         });
       }
 
-      const companyData = companyDoc.data();
       const userData = userDoc.data();
+
+      // Verify it's a company
+      if (userData.role !== 'company') {
+        return res.status(403).json({
+          success: false,
+          message: 'User is not a company'
+        });
+      }
 
       res.json({
         success: true,
         data: {
-          ...companyData,
           ...userData,
           id: companyId
         }
@@ -43,30 +48,22 @@ class CompanyController {
       const companyId = req.user.uid;
       const updates = req.body;
 
-      // Update company collection
-      if (updates.companyName || updates.industry || updates.size || 
-          updates.website || updates.description || updates.location) {
-        
-        const companyUpdates = {};
-        if (updates.companyName) companyUpdates.name = updates.companyName;
-        if (updates.industry) companyUpdates.industry = updates.industry;
-        if (updates.size) companyUpdates.size = updates.size;
-        if (updates.website) companyUpdates.website = updates.website;
-        if (updates.description) companyUpdates.description = updates.description;
-        if (updates.location) companyUpdates.location = updates.location;
-
-        companyUpdates.updatedAt = new Date();
-
-        await db.collection('companies').doc(companyId).update(companyUpdates);
-      }
-
-      // Update users collection
+      // Update users collection (single source of truth)
       const userUpdates = {};
-      if (updates.firstName) userUpdates.firstName = updates.firstName;
-      if (updates.lastName) userUpdates.lastName = updates.lastName;
-      if (updates.phone) userUpdates.phone = updates.phone;
-      if (updates.companyName) userUpdates.companyName = updates.companyName;
-      if (updates.contactPerson) userUpdates.contactPerson = `${updates.firstName} ${updates.lastName}`;
+      if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
+      if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
+      if (updates.phone !== undefined) userUpdates.phone = updates.phone;
+      if (updates.companyName !== undefined) userUpdates.companyName = updates.companyName;
+      if (updates.industry !== undefined) userUpdates.industry = updates.industry;
+      if (updates.size !== undefined) userUpdates.size = updates.size;
+      if (updates.website !== undefined) userUpdates.website = updates.website;
+      if (updates.description !== undefined) userUpdates.description = updates.description;
+      if (updates.location !== undefined) userUpdates.location = updates.location;
+      if (updates.contactPerson !== undefined) {
+        userUpdates.contactPerson = updates.contactPerson;
+      } else if (updates.firstName && updates.lastName) {
+        userUpdates.contactPerson = `${updates.firstName} ${updates.lastName}`;
+      }
 
       userUpdates.updatedAt = new Date();
 
@@ -91,17 +88,25 @@ class CompanyController {
     try {
       const companyId = req.user.uid;
 
+      // Get jobs without orderBy to avoid index requirement
       const jobsSnapshot = await db.collection('jobs')
         .where('companyId', '==', companyId)
-        .orderBy('createdAt', 'desc')
         .get();
 
       const jobs = [];
       jobsSnapshot.forEach(doc => {
+        const jobData = doc.data();
         jobs.push({
           id: doc.id,
-          ...doc.data()
+          ...jobData
         });
+      });
+
+      // Sort in memory by createdAt if available
+      jobs.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA; // Descending order
       });
 
       res.json({
@@ -111,9 +116,11 @@ class CompanyController {
 
     } catch (error) {
       console.error('Get company jobs error:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch company jobs'
+        message: 'Failed to fetch company jobs',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -131,11 +138,18 @@ class CompanyController {
       const jobs = jobsSnapshot.docs.map(doc => doc.data());
       const applications = applicationsSnapshot.docs.map(doc => doc.data());
 
+      const shortlisted = applications.filter(app => app.status === 'shortlisted').length;
+      const totalApplicants = applications.length;
+      const avgMatchRate = totalApplicants > 0 
+        ? (applications.reduce((sum, app) => sum + (app.matchScore || 0), 0) / totalApplicants).toFixed(0) + '%'
+        : '0%';
+
       const stats = {
         totalJobs: jobs.length,
-        activeJobs: jobs.filter(job => job.status === 'open').length,
-        totalApplications: applications.length,
-        qualifiedApplications: applications.filter(app => app.status === 'shortlisted').length,
+        activeJobs: jobs.filter(job => job.status === 'open' || job.status === 'active').length,
+        totalApplicants: totalApplicants,
+        shortlisted: shortlisted,
+        matchRate: avgMatchRate,
         applicationStatus: applications.reduce((acc, app) => {
           acc[app.status] = (acc[app.status] || 0) + 1;
           return acc;
@@ -253,6 +267,99 @@ class CompanyController {
       res.status(500).json({
         success: false,
         message: 'Failed to export admitted candidates'
+      });
+    }
+  }
+
+  // Get filtered candidates based on criteria
+  async getFilteredCandidates(req, res) {
+    try {
+      const companyId = req.user.uid;
+      const { minMatchScore, educationLevel, skills, experience } = req.query;
+
+      // Get all students
+      const studentsSnapshot = await db.collection('users')
+        .where('role', '==', 'student')
+        .get();
+
+      let candidates = [];
+
+      for (const studentDoc of studentsSnapshot.docs) {
+        const student = studentDoc.data();
+        
+        // Get student's job applications to calculate match scores
+        const applicationsSnapshot = await db.collection('jobApplications')
+          .where('studentId', '==', studentDoc.id)
+          .where('companyId', '==', companyId)
+          .get();
+
+        if (applicationsSnapshot.empty) continue;
+
+        // Get the highest match score from applications
+        let maxMatchScore = 0;
+        applicationsSnapshot.forEach(appDoc => {
+          const app = appDoc.data();
+          if (app.matchScore && app.matchScore > maxMatchScore) {
+            maxMatchScore = app.matchScore;
+          }
+        });
+
+        // Apply filters
+        if (minMatchScore && maxMatchScore < parseFloat(minMatchScore)) {
+          continue;
+        }
+
+        if (educationLevel && educationLevel !== 'Any') {
+          // Check student's education level
+          const studentEducation = student.educationLevel || student.highestEducation || '';
+          if (!studentEducation.toLowerCase().includes(educationLevel.toLowerCase())) {
+            continue;
+          }
+        }
+
+        if (skills && skills.trim() !== '') {
+          const requiredSkills = skills.split(',').map(s => s.trim().toLowerCase());
+          const studentSkills = (student.skills || []).map(s => s.toLowerCase());
+          const hasRequiredSkills = requiredSkills.some(skill => 
+            studentSkills.some(studentSkill => studentSkill.includes(skill))
+          );
+          if (!hasRequiredSkills) {
+            continue;
+          }
+        }
+
+        if (experience && experience !== 'Any') {
+          const studentExperience = student.experience || student.yearsOfExperience || 0;
+          const requiredExperience = parseFloat(experience);
+          if (studentExperience < requiredExperience) {
+            continue;
+          }
+        }
+
+        candidates.push({
+          id: studentDoc.id,
+          name: `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+          email: student.email,
+          matchScore: maxMatchScore,
+          educationLevel: student.educationLevel || student.highestEducation || 'N/A',
+          skills: student.skills || [],
+          experience: student.experience || student.yearsOfExperience || 0
+        });
+      }
+
+      // Sort by match score descending
+      candidates.sort((a, b) => b.matchScore - a.matchScore);
+
+      res.json({
+        success: true,
+        data: candidates
+      });
+
+    } catch (error) {
+      console.error('Get filtered candidates error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch filtered candidates'
       });
     }
   }
