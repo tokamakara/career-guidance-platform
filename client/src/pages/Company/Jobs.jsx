@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { companyService } from '../../services/api/companyService';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Modal from '../../components/ui/Modal';
 import { useNotification } from '../../context/NotificationContext';
 import './Jobs.css';
@@ -276,14 +276,64 @@ const CompanyJobs = () => {
             {selectedJob.requirements && (
               <div className="detail-section">
                 <label>Requirements:</label>
-                <ul className="detail-list">
-                  {Array.isArray(selectedJob.requirements) 
-                    ? selectedJob.requirements.map((req, idx) => (
-                        <li key={idx}>{req}</li>
-                      ))
-                    : <li>{selectedJob.requirements}</li>
-                  }
-                </ul>
+                {typeof selectedJob.requirements === 'object' && !Array.isArray(selectedJob.requirements) ? (
+                  <div className="requirements-details">
+                    {selectedJob.requirements.qualifications && (
+                      <div className="requirement-group">
+                        <strong>Qualifications:</strong>
+                        <ul className="detail-list">
+                          {Array.isArray(selectedJob.requirements.qualifications)
+                            ? selectedJob.requirements.qualifications.map((qual, idx) => (
+                                <li key={idx}>{qual}</li>
+                              ))
+                            : <li>{String(selectedJob.requirements.qualifications)}</li>
+                          }
+                        </ul>
+                      </div>
+                    )}
+                    {selectedJob.requirements.certificates && (
+                      <div className="requirement-group">
+                        <strong>Certificates:</strong>
+                        <ul className="detail-list">
+                          {Array.isArray(selectedJob.requirements.certificates)
+                            ? selectedJob.requirements.certificates.map((cert, idx) => (
+                                <li key={idx}>{cert}</li>
+                              ))
+                            : <li>{String(selectedJob.requirements.certificates)}</li>
+                          }
+                        </ul>
+                      </div>
+                    )}
+                    {selectedJob.requirements.workExperience !== undefined && (
+                      <div className="requirement-group">
+                        <strong>Work Experience:</strong>
+                        <span>{selectedJob.requirements.workExperience} {selectedJob.requirements.workExperience === 1 ? 'year' : 'years'}</span>
+                      </div>
+                    )}
+                    {selectedJob.requirements.skills && (
+                      <div className="requirement-group">
+                        <strong>Required Skills:</strong>
+                        <ul className="detail-list">
+                          {Array.isArray(selectedJob.requirements.skills)
+                            ? selectedJob.requirements.skills.map((skill, idx) => (
+                                <li key={idx}>{skill}</li>
+                              ))
+                            : <li>{String(selectedJob.requirements.skills)}</li>
+                          }
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <ul className="detail-list">
+                    {Array.isArray(selectedJob.requirements) 
+                      ? selectedJob.requirements.map((req, idx) => (
+                          <li key={idx}>{String(req)}</li>
+                        ))
+                      : <li>{String(selectedJob.requirements)}</li>
+                    }
+                  </ul>
+                )}
               </div>
             )}
 
@@ -293,11 +343,35 @@ const CompanyJobs = () => {
                 <ul className="detail-list">
                   {Array.isArray(selectedJob.responsibilities)
                     ? selectedJob.responsibilities.map((resp, idx) => (
-                        <li key={idx}>{resp}</li>
+                        <li key={idx}>{String(resp)}</li>
                       ))
-                    : <li>{selectedJob.responsibilities}</li>
+                    : <li>{String(selectedJob.responsibilities)}</li>
                   }
                 </ul>
+              </div>
+            )}
+
+            {selectedJob.salaryRange && (
+              <div className="detail-section">
+                <label>Salary Range:</label>
+                <span>{typeof selectedJob.salaryRange === 'object' 
+                  ? `${selectedJob.salaryRange.min || 'N/A'} - ${selectedJob.salaryRange.max || 'N/A'}`
+                  : String(selectedJob.salaryRange)
+                }</span>
+              </div>
+            )}
+
+            {selectedJob.applicationDeadline && (
+              <div className="detail-section">
+                <label>Application Deadline:</label>
+                <span>{formatDate(selectedJob.applicationDeadline)}</span>
+              </div>
+            )}
+
+            {selectedJob.department && (
+              <div className="detail-section">
+                <label>Department:</label>
+                <span>{selectedJob.department}</span>
               </div>
             )}
 

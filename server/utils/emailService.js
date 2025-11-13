@@ -233,8 +233,8 @@ class EmailService {
             <strong>${companyName}</strong><br>
             Career & Education Gateway
           </p>
-        </div>
-      `;
+      </div>
+    `;
     }
 
     return await this.sendEmail(studentEmail, subject, html);

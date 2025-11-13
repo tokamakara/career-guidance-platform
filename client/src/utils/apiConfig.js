@@ -51,7 +51,7 @@ const getApiUrl = () => {
   }
 
   // Default to production URL (only if clearly not local and no env var)
-  const prodApiUrl = 'https://career-guidance-api-eajo.onrender.com/api';
+  const prodApiUrl = 'https://career-guidance-backend-70ny.onrender.com/api';
   console.log('✅ PRODUCTION MODE - Using production API:', prodApiUrl);
   return prodApiUrl;
 };

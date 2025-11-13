@@ -55,7 +55,12 @@ const CompanyDashboard = () => {
       setRecentApplicants(allApplicants.slice(0, 5));
     } catch (err) {
       console.error('Dashboard load error:', err);
-      setError(err.message || 'Failed to load dashboard data');
+      // Check if it's a connection error
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('ERR_CONNECTION_REFUSED'))) {
+        setError('Unable to connect to server. Please make sure the backend server is running on port 5000.');
+      } else {
+        setError(err.message || 'Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -119,12 +124,6 @@ const CompanyDashboard = () => {
           </Link>
           <Link to="/company/applicants" className="action-btn secondary">
             View Applicants
-          </Link>
-          <Link to="/company/filtered-candidates" className="action-btn success">
-            Find Candidates
-          </Link>
-          <Link to="/company/profile" className="action-btn info">
-            Update Profile
           </Link>
         </div>
       </div>

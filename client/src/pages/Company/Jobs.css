@@ -290,6 +290,28 @@
   margin-bottom: 0.5rem;
 }
 
+.requirements-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.requirement-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.requirement-group strong {
+  color: #333;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.requirement-group span {
+  color: #555;
+}
+
 .detail-stats {
   display: flex;
   gap: 2rem;
