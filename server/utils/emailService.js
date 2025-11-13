@@ -239,6 +239,46 @@ class EmailService {
 
     return await this.sendEmail(studentEmail, subject, html);
   }
+
+  async sendVerificationEmail(email, verificationLink) {
+    const subject = 'Verify Your Email - Career & Education Gateway';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; color: white; margin-bottom: 20px;">
+          <h1 style="margin: 0; font-size: 28px;">Welcome!</h1>
+          <p style="margin: 10px 0 0 0; font-size: 18px;">Verify Your Email Address</p>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">
+            Thank you for registering with Career & Education Gateway!
+          </p>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">
+            Please click the button below to verify your email address and activate your account:
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationLink}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+              Verify Email Address
+            </a>
+          </div>
+          <p style="font-size: 14px; line-height: 1.6; color: #666; margin-top: 20px;">
+            If the button doesn't work, copy and paste this link into your browser:
+          </p>
+          <p style="font-size: 12px; color: #667eea; word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 4px;">
+            ${verificationLink}
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #666; margin-top: 20px;">
+            This link will expire in 24 hours. If you didn't create an account, please ignore this email.
+          </p>
+        </div>
+        <p style="font-size: 14px; color: #666; margin-top: 20px; text-align: center;">
+          Best regards,<br>
+          <strong>Career & Education Gateway Team</strong>
+        </p>
+      </div>
+    `;
+
+    return await this.sendEmail(email, subject, html);
+  }
 }
 
 module.exports = new EmailService();

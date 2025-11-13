@@ -86,15 +86,7 @@ class AuthController {
 
       await db.collection('users').doc(userRecord.uid).set(cleanUserProfile);
 
-      // Send verification email
-      try {
-        const verificationLink = await admin.auth().generateEmailVerificationLink(email);
-        await emailService.sendVerificationEmail(email, verificationLink);
-      } catch (emailError) {
-        console.warn('⚠️ Failed to send verification email:', emailError);
-        // Don't fail registration if email sending fails
-      }
-
+      // Send response immediately, then send email asynchronously
       res.status(201).json({
         success: true,
         message: 'Registration successful! Please check your email for verification.',
@@ -105,8 +97,25 @@ class AuthController {
         }
       });
 
+      // Send verification email asynchronously (don't block response)
+      setImmediate(async () => {
+        try {
+          const verificationLink = await admin.auth().generateEmailVerificationLink(email);
+          await emailService.sendVerificationEmail(email, verificationLink);
+          console.log('✅ Verification email sent to:', email);
+        } catch (emailError) {
+          console.warn('⚠️ Failed to send verification email:', emailError);
+          // Don't fail registration if email sending fails
+        }
+      });
+
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       
       // Handle specific Firebase errors
       if (error.code === 'auth/email-already-exists' || error.code === 'auth/email-already-in-use') {
