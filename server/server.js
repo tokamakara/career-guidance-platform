@@ -58,6 +58,21 @@ app.use('/api/company', companyRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    success: true,
+    message: 'Career Guidance Platform API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      docs: '/api-docs'
+    }
+  });
+});
+
 // Health check route
 app.get('/health', (req, res) => {
   res.status(200).json({ 
@@ -68,14 +83,35 @@ app.get('/health', (req, res) => {
   });
 });
 
+// API root route
+app.get('/api', (req, res) => {
+  res.status(200).json({ 
+    success: true,
+    message: 'Career Guidance Platform API',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      admin: '/api/admin',
+      student: '/api/student',
+      company: '/api/company',
+      institute: '/api/institute',
+      jobs: '/api/jobs',
+      applications: '/api/applications',
+      docs: '/api-docs'
+    }
+  });
+});
+
 // Error handling middleware
 app.use(errorHandler);
 
-// 404 handler
+// 404 handler - must be last
 app.use('*', (req, res) => {
   res.status(404).json({ 
     success: false, 
-    message: 'Route not found' 
+    message: 'Route not found',
+    path: req.originalUrl,
+    method: req.method
   });
 });
 

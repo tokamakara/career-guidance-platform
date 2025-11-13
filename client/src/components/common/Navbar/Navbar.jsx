@@ -322,22 +322,59 @@ const Navbar = () => {
                 </div>
               </>
             ) : (
-              <div className="mobile-auth">
-                <Link 
-                  to="/login" 
-                  className="nav-link"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link 
-                  to="/register" 
-                  className="nav-link auth-button"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sign Up
-                </Link>
-              </div>
+              <>
+                {/* Public Navigation Links for Mobile */}
+                <div className="mobile-nav-links">
+                  <Link 
+                    to="/" 
+                    className="nav-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Home
+                  </Link>
+                  <Link 
+                    to="/institutions" 
+                    className="nav-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Institutions
+                  </Link>
+                  <Link 
+                    to="/about" 
+                    className="nav-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    About
+                  </Link>
+                  <Link 
+                    to="/contact" 
+                    className="nav-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Contact
+                  </Link>
+                </div>
+                
+                <div className="mobile-nav-divider"></div>
+                
+                {/* Auth Buttons for Mobile */}
+                <div className="mobile-auth">
+                  <Link 
+                    to="/login" 
+                    className="auth-link"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="auth-button"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         )}
