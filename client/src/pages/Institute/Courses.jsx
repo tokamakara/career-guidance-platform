@@ -101,7 +101,21 @@ const Courses = () => {
     }
 
     try {
-      await institutionService.createCourse(formData);
+      setLoading(true);
+      
+      // Prepare course data for backend
+      const courseData = {
+        facultyId: formData.facultyId,
+        name: formData.name,
+        code: formData.code,
+        duration: parseInt(formData.duration) || formData.duration,
+        description: formData.description || '',
+        requirements: formData.requirements || [],
+        seatsAvailable: parseInt(formData.seatsAvailable) || formData.seatsAvailable,
+        applicationDeadline: formData.applicationDeadline
+      };
+
+      await institutionService.createCourse(courseData);
       
       addNotification({
         type: 'success',
@@ -111,14 +125,18 @@ const Courses = () => {
 
       resetForm();
       setShowCreateForm(false);
+      await fetchFaculties(); // Refresh faculties to get updated course counts
       fetchCourses();
 
     } catch (error) {
+      console.error('Create course error:', error);
       addNotification({
         type: 'error',
         title: 'Creation Failed',
-        message: error.message
+        message: error.message || 'Failed to create course. Please try again.'
       });
+    } finally {
+      setLoading(false);
     }
   };
 

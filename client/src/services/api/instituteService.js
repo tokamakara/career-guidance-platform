@@ -268,6 +268,15 @@ export const institutionService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to publish admissions');
     }
+  },
+
+  async createCourse(courseData) {
+    try {
+      const response = await api.post('/institute/courses', courseData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create course');
+    }
   }
 };
 
