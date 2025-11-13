@@ -63,6 +63,13 @@ router.post(
 );
 
 router.get(
+  '/courses',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.getAllCourses
+);
+
+router.get(
   '/my-applications',
   authenticateToken,
   requireRole(['institute']),

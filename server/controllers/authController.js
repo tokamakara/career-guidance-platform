@@ -192,13 +192,45 @@ class AuthController {
         });
       }
 
-      // Note: Firebase Admin SDK cannot verify passwords directly
-      // Password verification happens on the frontend when signing in with custom token
-      // If the password is wrong, the frontend signInWithCustomToken will fail
-      // But we still need to verify the user exists first
+      // Normalize email (lowercase, trim) to match registration
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Verify the ID token from Authorization header (password already verified on frontend)
+      let decodedToken;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.split('Bearer ')[1];
+          decodedToken = await admin.auth().verifyIdToken(token);
+          
+          // Verify the email in token matches the email in request
+          if (decodedToken.email?.toLowerCase().trim() !== normalizedEmail) {
+            console.warn(`⚠️ Email mismatch: token email (${decodedToken.email}) != request email (${normalizedEmail})`);
+            return res.status(401).json({
+              success: false,
+              message: 'Invalid email or password.'
+            });
+          }
+        } catch (tokenError) {
+          console.error('❌ Token verification failed:', tokenError);
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid or expired authentication token.'
+          });
+        }
+      } else {
+        // Fallback: if no token, verify user exists (for backward compatibility)
+        console.warn('⚠️ No authorization token provided, using email lookup');
+      }
+
+      // Get user from Firebase Auth (use token UID if available, otherwise lookup by email)
       let user;
       try {
-        user = await admin.auth().getUserByEmail(email);
+        if (decodedToken?.uid) {
+          user = await admin.auth().getUser(decodedToken.uid);
+        } else {
+          user = await admin.auth().getUserByEmail(normalizedEmail);
+        }
       } catch (error) {
         if (error.code === 'auth/user-not-found') {
           return res.status(401).json({
@@ -238,7 +270,8 @@ class AuthController {
       }
 
       // Check if user is approved (for institutes and companies)
-      if (userProfile.status === 'pending') {
+      // Note: Students are auto-approved, so only check for company/institute
+      if ((userProfile.role === 'company' || userProfile.role === 'institute') && userProfile.status === 'pending') {
         return res.status(403).json({
           success: false,
           message: 'Your account is pending approval. Please wait for admin approval.'
@@ -251,6 +284,9 @@ class AuthController {
           message: 'Your account has been suspended. Please contact admin.'
         });
       }
+
+      // Allow login even if email is not verified (they can verify later)
+      // This prevents blocking users who haven't received verification emails
 
       // Create custom token for the user
       const customToken = await admin.auth().createCustomToken(user.uid);

@@ -30,8 +30,11 @@ const Courses = () => {
   const gradeOptions = getGradeOptions();
 
   useEffect(() => {
-    fetchFaculties();
-    fetchCourses();
+    const loadData = async () => {
+      await fetchFaculties();
+      await fetchCourses();
+    };
+    loadData();
   }, []);
 
   const fetchFaculties = async () => {
@@ -53,20 +56,11 @@ const Courses = () => {
     try {
       setLoading(true);
       // Fetch all courses for the institute
-      const allCourses = [];
-      for (const faculty of faculties) {
-        const result = await institutionService.getFacultyCourses(
-          userProfile?.institutionId, 
-          faculty.id
-        );
-        allCourses.push(...result.data.map(course => ({
-          ...course,
-          facultyName: faculty.name
-        })));
-      }
-      setCourses(allCourses);
+      const allCourses = await institutionService.getCourses();
+      setCourses(allCourses || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
+      setCourses([]);
     } finally {
       setLoading(false);
     }

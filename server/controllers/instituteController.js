@@ -470,6 +470,51 @@ class InstituteController {
     }
   }
 
+  // Get all courses for the current institute
+  async getAllCourses(req, res) {
+    try {
+      const instituteId = req.user.uid;
+
+      const facultiesSnapshot = await db.collection('institutions')
+        .doc(instituteId)
+        .collection('faculties')
+        .get();
+
+      const allCourses = [];
+      for (const facultyDoc of facultiesSnapshot.docs) {
+        const facultyData = facultyDoc.data();
+        
+        const coursesSnapshot = await db.collection('institutions')
+          .doc(instituteId)
+          .collection('faculties')
+          .doc(facultyDoc.id)
+          .collection('courses')
+          .get();
+
+        coursesSnapshot.forEach(courseDoc => {
+          allCourses.push({
+            id: courseDoc.id,
+            ...courseDoc.data(),
+            facultyId: facultyDoc.id,
+            facultyName: facultyData.name
+          });
+        });
+      }
+
+      res.json({
+        success: true,
+        data: allCourses
+      });
+
+    } catch (error) {
+      console.error('Get all courses error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch courses'
+      });
+    }
+  }
+
   // Institute creates a faculty
   async createFaculty(req, res) {
     try {

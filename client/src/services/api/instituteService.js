@@ -179,18 +179,9 @@ export const institutionService = {
 
   async getCourses() {
     try {
-      // Get all faculties and their courses
-      const facultiesResponse = await api.get('/institute/faculties');
-      const faculties = facultiesResponse.data.data || [];
-      
-      const allCourses = [];
-      for (const faculty of faculties) {
-        if (faculty.courses && Array.isArray(faculty.courses)) {
-          allCourses.push(...faculty.courses);
-        }
-      }
-      
-      return allCourses;
+      // Get all courses for the institute
+      const response = await api.get('/institute/courses');
+      return response.data.data || [];
     } catch (error) {
       console.error('Get courses error:', error);
       return [];
