@@ -124,19 +124,18 @@ export const AuthProvider = ({ children }) => {
       console.log('🔄 Auth state change detected:', user ? `User: ${user.email}` : 'User signed out');
       
       if (user) {
-        // Check if email is verified (for new registrations)
-        if (!user.emailVerified) {
-          console.warn('⚠️ Email not verified - signing out user');
-          // Sign out user if email is not verified
-          await firebaseAuthService.logout();
-          setCurrentUser(null);
-          setUserProfile(null);
-          localStorage.removeItem('authToken');
-          return;
-        }
-        
-        // User signed in and verified
+        // Allow unverified users to stay logged in (they need to verify their email)
+        // Only block them from accessing protected routes, don't sign them out
+        // This allows them to see the verification message and resend verification email
         setCurrentUser(user);
+        
+        // Log email verification status
+        if (!user.emailVerified) {
+          console.warn('⚠️ Email not verified - user can stay logged in to verify email');
+          console.warn('⚠️ User should be redirected to verification page');
+        } else {
+          console.log('✅ Email verified');
+        }
         
         // Get and store Firebase ID token for API authentication
         try {
