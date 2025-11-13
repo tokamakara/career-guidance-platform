@@ -1,0 +1,49 @@
+# Render.com Blueprint Configuration
+# This file allows you to define your service as code
+# Deploy by: render.yaml → New Blueprint → Connect this repo
+
+services:
+  - type: web
+    name: career-guidance-api
+    env: node
+    region: oregon
+    plan: free  # Change to 'starter' or 'standard' for production
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: server
+    envVars:
+      # Firebase Configuration
+      - key: FIREBASE_PROJECT_ID
+        sync: false  # Set manually in Render dashboard
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY_ID
+        sync: false
+      - key: FIREBASE_CLIENT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_CERT_URL
+        sync: false
+      
+      # Email Configuration
+      - key: EMAIL_SERVICE
+        value: gmail
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      
+      # Server Configuration
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        value: https://career-guidance-frontend-96nv.onrender.com
+      - key: API_URL
+        sync: false  # Will be set automatically or manually
+
+# Note: Variables marked with sync: false must be set manually in Render dashboard
+# This is for security - sensitive values should not be in version control
+

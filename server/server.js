@@ -22,12 +22,16 @@ const app = express();
 
 // Middlewares
 app.use(helmet());
+
+// CORS configuration
+const allowedOrigins = [
+  'https://career-guidance-frontend-96nv.onrender.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
 app.use(cors({
-  origin: [
-    'https://guileless-cascaron-64df70.netlify.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -83,7 +87,10 @@ app.listen(PORT, () => {
   console.log(`📚 Career Guidance Platform API`);
   console.log(`📍 Environment: ${NODE_ENV}`);
   console.log(`🔗 API URL: http://localhost:${PORT}/api`);
-  console.log(`🌐 Allowed Origins: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
+  console.log(`🌐 Allowed CORS Origins:`);
+  allowedOrigins.forEach(origin => {
+    console.log(`   ✓ ${origin}`);
+  });
   if (NODE_ENV === 'development') {
     console.log(`💡 Local development mode - Frontend should connect to: http://localhost:${PORT}/api`);
   }
