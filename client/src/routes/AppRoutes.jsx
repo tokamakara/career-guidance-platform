@@ -54,6 +54,7 @@ const StudentSettings = React.lazy(() => import('../pages/Student/Shared/Setting
 import StudentLayout from '../layouts/StudentLayout';
 import CompanyLayout from '../layouts/CompanyLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import InstituteLayout from '../layouts/InstituteLayout';
 
 // Company Pages
 import CompanyDashboard from '../pages/Company/Dashboard';
@@ -206,7 +207,9 @@ const AppRoutes = () => {
         path="/institute/dashboard"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteDashboard />
+            <InstituteLayout>
+              <InstituteDashboard />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />
@@ -214,7 +217,9 @@ const AppRoutes = () => {
         path="/institute/faculties"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteFaculties />
+            <InstituteLayout>
+              <InstituteFaculties />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />
@@ -222,7 +227,9 @@ const AppRoutes = () => {
         path="/institute/courses"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteCourses />
+            <InstituteLayout>
+              <InstituteCourses />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />
@@ -230,7 +237,9 @@ const AppRoutes = () => {
         path="/institute/applications"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteApplications />
+            <InstituteLayout>
+              <InstituteApplications />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />
@@ -238,7 +247,9 @@ const AppRoutes = () => {
         path="/institute/admissions"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteAdmissions />
+            <InstituteLayout>
+              <InstituteAdmissions />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />
@@ -246,7 +257,9 @@ const AppRoutes = () => {
         path="/institute/profile"
         element={
           <ProtectedRoute requiredRole="institute">
-            <InstituteProfile />
+            <InstituteLayout>
+              <InstituteProfile />
+            </InstituteLayout>
           </ProtectedRoute>
         }
       />

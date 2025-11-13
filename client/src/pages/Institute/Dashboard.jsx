@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import {  institutionService } from '../../services/api/instituteService';
+import { useAuth } from '../../context/AuthContext';
+import { institutionService } from '../../services/api/instituteService';
 import { Link } from 'react-router-dom';
+import './Dashboard.css';
 
 const InstituteDashboard = () => {
   const [stats, setStats] = useState({});
@@ -10,7 +11,7 @@ const InstituteDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     loadDashboardData();
@@ -20,9 +21,9 @@ const InstituteDashboard = () => {
     try {
       setLoading(true);
       const [dashboardStats, applications, coursesData] = await Promise.all([
-        instituteService.getDashboard(),
-        instituteService.getApplications(),
-        instituteService.getCourses()
+        institutionService.getDashboard(),
+        institutionService.getApplications(),
+        institutionService.getCourses()
       ]);
 
       setStats(dashboardStats);
@@ -43,7 +44,7 @@ const InstituteDashboard = () => {
     <div className="institute-dashboard">
       <div className="page-header">
         <h1>Institution Dashboard</h1>
-        <p>Welcome back, {user?.name}</p>
+        <p>Welcome back, {userProfile?.firstName} {userProfile?.lastName}</p>
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -51,7 +52,6 @@ const InstituteDashboard = () => {
       {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card primary">
-          <div className="stat-icon">📊</div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalApplications || 0}</div>
             <div className="stat-label">Total Applications</div>
@@ -59,7 +59,6 @@ const InstituteDashboard = () => {
         </div>
 
         <div className="stat-card success">
-          <div className="stat-icon">🎓</div>
           <div className="stat-content">
             <div className="stat-value">{stats.totalCourses || 0}</div>
             <div className="stat-label">Courses</div>
@@ -67,7 +66,6 @@ const InstituteDashboard = () => {
         </div>
 
         <div className="stat-card warning">
-          <div className="stat-icon">⏳</div>
           <div className="stat-content">
             <div className="stat-value">{stats.pendingApplications || 0}</div>
             <div className="stat-label">Pending Review</div>
@@ -75,7 +73,6 @@ const InstituteDashboard = () => {
         </div>
 
         <div className="stat-card info">
-          <div className="stat-icon">✅</div>
           <div className="stat-content">
             <div className="stat-value">{stats.admittedStudents || 0}</div>
             <div className="stat-label">Admitted Students</div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import {  institutionService } from '../../services/api/instituteService';
+import { useAuth } from '../../context/AuthContext';
+import { institutionService } from '../../services/api/instituteService';
 
 const InstituteProfile = () => {
   const [profile, setProfile] = useState({
@@ -19,7 +19,7 @@ const InstituteProfile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     loadProfile();
@@ -27,7 +27,7 @@ const InstituteProfile = () => {
 
   const loadProfile = async () => {
     try {
-      const data = await instituteService.getProfile();
+      const data = await institutionService.getProfile();
       setProfile(data);
     } catch (err) {
       setError(err.message || 'Failed to load profile');
@@ -51,7 +51,7 @@ const InstituteProfile = () => {
     setSuccess('');
 
     try {
-      await instituteService.updateProfile(profile);
+      await institutionService.updateProfile(profile);
       setSuccess('Profile updated successfully!');
     } catch (err) {
       setError(err.message || 'Failed to update profile');

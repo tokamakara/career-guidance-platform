@@ -427,6 +427,49 @@ class InstituteController {
     return studentPoints <= requiredPoints; // Student grade is equal or better
   }
 
+  // Get all faculties for the current institute
+  async getFaculties(req, res) {
+    try {
+      const instituteId = req.user.uid;
+
+      const facultiesSnapshot = await db.collection('institutions')
+        .doc(instituteId)
+        .collection('faculties')
+        .get();
+
+      const faculties = [];
+      for (const doc of facultiesSnapshot.docs) {
+        const facultyData = doc.data();
+        
+        // Get course count for this faculty
+        const coursesSnapshot = await db.collection('institutions')
+          .doc(instituteId)
+          .collection('faculties')
+          .doc(doc.id)
+          .collection('courses')
+          .get();
+
+        faculties.push({
+          id: doc.id,
+          ...facultyData,
+          courseCount: coursesSnapshot.size
+        });
+      }
+
+      res.json({
+        success: true,
+        data: faculties
+      });
+
+    } catch (error) {
+      console.error('Get faculties error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch faculties'
+      });
+    }
+  },
+
   // Institute creates a faculty
   async createFaculty(req, res) {
     try {
@@ -460,6 +503,52 @@ class InstituteController {
       res.status(500).json({
         success: false,
         message: 'Failed to create faculty'
+      });
+    }
+  }
+
+  // Delete a faculty
+  async deleteFaculty(req, res) {
+    try {
+      const { facultyId } = req.params;
+      const instituteId = req.user.uid;
+
+      // Check if faculty exists
+      const facultyRef = db.collection('institutions')
+        .doc(instituteId)
+        .collection('faculties')
+        .doc(facultyId);
+      
+      const facultyDoc = await facultyRef.get();
+      if (!facultyDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Faculty not found'
+        });
+      }
+
+      // Delete all courses in this faculty first
+      const coursesSnapshot = await facultyRef.collection('courses').get();
+      const batch = db.batch();
+      
+      coursesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Delete the faculty
+      batch.delete(facultyRef);
+      await batch.commit();
+
+      res.json({
+        success: true,
+        message: 'Faculty deleted successfully'
+      });
+
+    } catch (error) {
+      console.error('Delete faculty error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete faculty'
       });
     }
   }
@@ -725,6 +814,50 @@ class InstituteController {
       res.status(500).json({
         success: false,
         message: 'Failed to export admitted students'
+      });
+    }
+  }
+
+  // Publish admissions for a course
+  async publishAdmissions(req, res) {
+    try {
+      const { courseId } = req.params;
+      const instituteId = req.user.uid;
+
+      // Get all admitted applications for this course
+      const applicationsSnapshot = await db.collection('educationApplications')
+        .where('institutionId', '==', instituteId)
+        .where('courseId', '==', courseId)
+        .where('status', '==', 'admitted')
+        .get();
+
+      const batch = db.batch();
+      let updatedCount = 0;
+
+      applicationsSnapshot.docs.forEach(doc => {
+        batch.update(doc.ref, {
+          admissionPublished: true,
+          admissionPublishedAt: new Date(),
+          updatedAt: new Date()
+        });
+        updatedCount++;
+      });
+
+      await batch.commit();
+
+      res.json({
+        success: true,
+        message: `Admissions published successfully for ${updatedCount} students`,
+        data: {
+          publishedCount: updatedCount
+        }
+      });
+
+    } catch (error) {
+      console.error('Publish admissions error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to publish admissions'
       });
     }
   }

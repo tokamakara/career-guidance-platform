@@ -136,6 +136,138 @@ export const institutionService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch qualified courses');
     }
+  },
+
+  // Institute user methods
+  async getDashboard() {
+    try {
+      const response = await api.get('/institute/my-applications');
+      const applications = response.data.data || [];
+      
+      // Get courses
+      const coursesResponse = await api.get('/institute/faculties');
+      const faculties = coursesResponse.data.data || [];
+      
+      // Calculate stats
+      const stats = {
+        totalApplications: applications.length,
+        totalCourses: faculties.reduce((sum, f) => sum + (f.courseCount || 0), 0),
+        pendingApplications: applications.filter(app => app.status === 'pending').length,
+        admittedStudents: applications.filter(app => app.status === 'admitted').length
+      };
+      
+      return stats;
+    } catch (error) {
+      console.error('Get dashboard error:', error);
+      return {
+        totalApplications: 0,
+        totalCourses: 0,
+        pendingApplications: 0,
+        admittedStudents: 0
+      };
+    }
+  },
+
+  async getApplications() {
+    try {
+      const response = await api.get('/institute/my-applications');
+      return response.data.data || [];
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch applications');
+    }
+  },
+
+  async getCourses() {
+    try {
+      // Get all faculties and their courses
+      const facultiesResponse = await api.get('/institute/faculties');
+      const faculties = facultiesResponse.data.data || [];
+      
+      const allCourses = [];
+      for (const faculty of faculties) {
+        if (faculty.courses && Array.isArray(faculty.courses)) {
+          allCourses.push(...faculty.courses);
+        }
+      }
+      
+      return allCourses;
+    } catch (error) {
+      console.error('Get courses error:', error);
+      return [];
+    }
+  },
+
+  async getFaculties() {
+    try {
+      const response = await api.get('/institute/faculties');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Get faculties error:', error);
+      return [];
+    }
+  },
+
+  async addFaculty(facultyData) {
+    try {
+      const response = await api.post('/institute/faculties', facultyData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to add faculty');
+    }
+  },
+
+  async deleteFaculty(facultyId) {
+    try {
+      const response = await api.delete(`/institute/faculties/${facultyId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to delete faculty');
+    }
+  },
+
+  async getProfile() {
+    try {
+      const response = await api.get('/institute/profile');
+      return response.data.data || {};
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch profile');
+    }
+  },
+
+  async updateProfile(profileData) {
+    try {
+      const response = await api.put('/institute/profile', profileData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update profile');
+    }
+  },
+
+  async updateAdmissionStatus(applicationId, status) {
+    try {
+      const response = await api.patch(`/institute/applications/${applicationId}/status`, { status });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update admission status');
+    }
+  },
+
+  async getCourseApplications(courseId) {
+    try {
+      const response = await api.get(`/institute/courses/${courseId}/applications`);
+      return response.data.data || [];
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch course applications');
+    }
+  },
+
+  async publishAdmissions(courseId) {
+    try {
+      const response = await api.post(`/institute/courses/${courseId}/publish-admissions`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to publish admissions');
+    }
   }
 };
 

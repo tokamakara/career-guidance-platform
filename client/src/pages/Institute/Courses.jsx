@@ -36,11 +36,16 @@ const Courses = () => {
 
   const fetchFaculties = async () => {
     try {
-      // This would fetch from the institute's own faculties
-      const result = await institutionService.getInstitutionDetails(userProfile?.institutionId);
-      setFaculties(result.data.faculties || []);
+      // Fetch faculties for the current institute user
+      const data = await institutionService.getFaculties();
+      setFaculties(data || []);
     } catch (error) {
       console.error('Error fetching faculties:', error);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load faculties'
+      });
     }
   };
 

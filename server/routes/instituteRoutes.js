@@ -34,11 +34,25 @@ router.get(
 );
 
 // Institute-specific routes (require institute role)
+router.get(
+  '/faculties',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.getFaculties
+);
+
 router.post(
   '/faculties',
   authenticateToken,
   requireRole(['institute']),
   instituteController.createFaculty
+);
+
+router.delete(
+  '/faculties/:facultyId',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.deleteFaculty
 );
 
 router.post(
@@ -53,6 +67,13 @@ router.get(
   authenticateToken,
   requireRole(['institute']),
   applicationController.getInstituteApplications
+);
+
+router.get(
+  '/courses/:courseId/applications',
+  authenticateToken,
+  requireRole(['institute']),
+  applicationController.getCourseApplications
 );
 
 router.patch(
@@ -83,6 +104,14 @@ router.get(
   authenticateToken,
   requireRole(['institute']),
   instituteController.exportAdmittedStudents
+);
+
+// Publish admissions
+router.post(
+  '/courses/:courseId/publish-admissions',
+  authenticateToken,
+  requireRole(['institute']),
+  instituteController.publishAdmissions
 );
 
 module.exports = router;

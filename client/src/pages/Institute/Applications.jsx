@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import {  institutionService } from '../../services/api/instituteService';
+import { useAuth } from '../../context/AuthContext';
+import { institutionService } from '../../services/api/instituteService';
 import Table from '../../components/ui/Table';
+import './Applications.css';
 
 const Applications = () => {
   const [applications, setApplications] = useState([]);
@@ -15,7 +16,7 @@ const Applications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     loadData();
@@ -29,8 +30,8 @@ const Applications = () => {
     try {
       setLoading(true);
       const [appsData, coursesData] = await Promise.all([
-        instituteService.getApplications(),
-        instituteService.getCourses()
+        institutionService.getApplications(),
+        institutionService.getCourses()
       ]);
       setApplications(appsData);
       setCourses(coursesData);

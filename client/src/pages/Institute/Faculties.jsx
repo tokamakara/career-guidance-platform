@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import {  institutionService } from '../../services/api/instituteService';
+import { useAuth } from '../../context/AuthContext';
+import { institutionService } from '../../services/api/instituteService';
 import Table from '../../components/ui/Table';
+import './Faculties.css';
 
 const Faculties = () => {
   const [faculties, setFaculties] = useState([]);
@@ -19,7 +20,7 @@ const Faculties = () => {
     email: ''
   });
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     loadFaculties();
@@ -28,7 +29,7 @@ const Faculties = () => {
   const loadFaculties = async () => {
     try {
       setLoading(true);
-      const data = await instituteService.getFaculties();
+      const data = await institutionService.getFaculties();
       setFaculties(data);
     } catch (err) {
       setError(err.message || 'Failed to load faculties');
@@ -44,7 +45,7 @@ const Faculties = () => {
     setSuccess('');
 
     try {
-      await instituteService.addFaculty(formData);
+      await institutionService.addFaculty(formData);
       setSuccess('Faculty added successfully!');
       setFormData({ name: '', description: '', dean: '', email: '' });
       setShowAddForm(false);
@@ -69,7 +70,7 @@ const Faculties = () => {
     }
 
     try {
-      await instituteService.deleteFaculty(facultyId);
+      await institutionService.deleteFaculty(facultyId);
       setSuccess('Faculty deleted successfully!');
       await loadFaculties();
     } catch (err) {

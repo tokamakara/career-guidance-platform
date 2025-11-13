@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import {  institutionService } from '../../services/api/instituteService';
+import { useAuth } from '../../context/AuthContext';
+import { institutionService } from '../../services/api/instituteService';
 import Table from '../../components/ui/Table';
 
 const Admissions = () => {
@@ -11,7 +11,7 @@ const Admissions = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
 
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
 
   useEffect(() => {
     loadCourses();
@@ -25,7 +25,7 @@ const Admissions = () => {
 
   const loadCourses = async () => {
     try {
-      const data = await instituteService.getCourses();
+      const data = await institutionService.getCourses();
       setCourses(data);
       if (data.length > 0) {
         setSelectedCourse(data[0].id);
@@ -38,7 +38,7 @@ const Admissions = () => {
   const loadApplications = async () => {
     try {
       setLoading(true);
-      const data = await instituteService.getCourseApplications(selectedCourse);
+      const data = await institutionService.getCourseApplications(selectedCourse);
       setApplications(data);
     } catch (err) {
       setError(err.message || 'Failed to load applications');
@@ -50,7 +50,7 @@ const Admissions = () => {
   const updateAdmissionStatus = async (applicationId, status) => {
     try {
       setUpdating(true);
-      await instituteService.updateAdmissionStatus(applicationId, status);
+      await institutionService.updateAdmissionStatus(applicationId, status);
       await loadApplications(); // Reload to get updated status
     } catch (err) {
       setError(err.message || 'Failed to update admission status');
@@ -61,7 +61,7 @@ const Admissions = () => {
 
   const publishAdmissions = async () => {
     try {
-      await instituteService.publishAdmissions(selectedCourse);
+      await institutionService.publishAdmissions(selectedCourse);
       alert('Admissions published successfully!');
       await loadApplications();
     } catch (err) {

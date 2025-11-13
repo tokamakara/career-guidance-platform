@@ -416,6 +416,48 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
     }
   }
 
+  // Get applications for a specific course
+  async getCourseApplications(req, res) {
+    try {
+      const { courseId } = req.params;
+      const instituteId = req.user.uid;
+
+      const applicationsSnapshot = await db.collection('educationApplications')
+        .where('institutionId', '==', instituteId)
+        .where('courseId', '==', courseId)
+        .orderBy('applicationDate', 'desc')
+        .get();
+
+      const applications = [];
+      for (const doc of applicationsSnapshot.docs) {
+        const application = doc.data();
+        
+        // Get student details
+        const studentDoc = await db.collection('users').doc(application.studentId).get();
+        const studentData = studentDoc.data();
+
+        applications.push({
+          id: doc.id,
+          ...application,
+          studentName: `${studentData?.firstName || ''} ${studentData?.lastName || ''}`.trim(),
+          studentEmail: studentData?.email || ''
+        });
+      }
+
+      res.json({
+        success: true,
+        data: applications
+      });
+
+    } catch (error) {
+      console.error('Get course applications error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch course applications'
+      });
+    }
+  },
+
   // Update application status (Institute)
   async updateApplicationStatus(req, res) {
     try {
