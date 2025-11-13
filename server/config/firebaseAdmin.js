@@ -10,13 +10,58 @@ try {
   const serviceAccountPath = path.join(__dirname, 'keys', 'serviceAccountKey.json');
   
   // Check if environment variables are available (for production/Render)
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  
+  // Handle different formats of private key
+  if (privateKey) {
+    // First, replace literal \n with actual newlines (common in env vars)
+    privateKey = privateKey.replace(/\\n/g, '\n');
+    
+    // If still no newlines, try to detect if it's a single-line format
+    if (!privateKey.includes('\n')) {
+      // Try to split on common separators
+      if (privateKey.includes('-----BEGIN PRIVATE KEY-----') && privateKey.includes('-----END PRIVATE KEY-----')) {
+        // Extract the key content between markers
+        const beginMarker = '-----BEGIN PRIVATE KEY-----';
+        const endMarker = '-----END PRIVATE KEY-----';
+        const keyStart = privateKey.indexOf(beginMarker);
+        const keyEnd = privateKey.indexOf(endMarker);
+        
+        if (keyStart !== -1 && keyEnd !== -1) {
+          const keyContent = privateKey.substring(keyStart + beginMarker.length, keyEnd).trim();
+          // Reconstruct with proper newlines
+          privateKey = beginMarker + '\n' + keyContent + '\n' + endMarker;
+        }
+      }
+    }
+    
+    // Clean up any double newlines
+    privateKey = privateKey.replace(/\n\n+/g, '\n');
+    
+    // Ensure it starts and ends correctly
+    if (!privateKey.trim().startsWith('-----BEGIN PRIVATE KEY-----')) {
+      console.warn('⚠️  Private key missing BEGIN marker, attempting to fix...');
+      privateKey = '-----BEGIN PRIVATE KEY-----\n' + privateKey.trim();
+    }
+    if (!privateKey.trim().endsWith('-----END PRIVATE KEY-----')) {
+      console.warn('⚠️  Private key missing END marker, attempting to fix...');
+      privateKey = privateKey.trim() + '\n-----END PRIVATE KEY-----';
+    }
+  }
+  
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const projectId = process.env.FIREBASE_PROJECT_ID;
   
   if (privateKey && clientEmail && projectId) {
     // Production: Use environment variables
     console.log('📦 Using environment variables for Firebase Admin...');
+    
+    // Validate private key format
+    if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
+      console.error('❌ Invalid private key format: Missing BEGIN/END markers');
+      throw new Error('Invalid private key format');
+    }
+    
     const serviceAccount = {
       type: "service_account",
       project_id: projectId,
@@ -30,11 +75,22 @@ try {
       client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
     };
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: `${projectId}.appspot.com`
-    });
-    console.log('✅ Firebase Admin initialized with environment variables');
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: `${projectId}.appspot.com`
+      });
+      console.log('✅ Firebase Admin initialized with environment variables');
+    } catch (initError) {
+      console.error('❌ Firebase Admin initialization failed:', initError.message);
+      console.error('🔍 Debug info:');
+      console.error('   - Project ID:', projectId);
+      console.error('   - Client Email:', clientEmail);
+      console.error('   - Private Key length:', privateKey?.length);
+      console.error('   - Private Key starts with:', privateKey?.substring(0, 30));
+      console.error('   - Private Key ends with:', privateKey?.substring(privateKey.length - 30));
+      throw initError;
+    }
   } else if (fs.existsSync(serviceAccountPath)) {
     // Development: Use service account file
     console.log('📁 Using service account file for Firebase Admin...');
