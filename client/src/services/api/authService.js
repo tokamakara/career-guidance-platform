@@ -3,11 +3,12 @@ import { auth } from '../firebase';
 import { API_URL } from '../../utils/apiConfig';
 
 // Helper function to add timeout to fetch
-const fetchWithTimeout = (url, options, timeout = 30000) => {
+// Increased timeout for production (Render.com can be slow on cold starts)
+const fetchWithTimeout = (url, options, timeout = 60000) => {
   return Promise.race([
     fetch(url, options),
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout. Please check your connection and try again.')), timeout)
+      setTimeout(() => reject(new Error('Request timeout. The server may be starting up. Please try again in a moment.')), timeout)
     )
   ]);
 };
@@ -24,7 +25,7 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData),
-      }, 30000); // 30 second timeout
+      }); // Timeout automatically set based on environment
 
       console.log('📥 Registration response status:', response.status);
       
@@ -73,7 +74,7 @@ export const authService = {
           'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({ email, password }),
-      }, 30000); // 30 second timeout
+      }); // Timeout automatically set based on environment
 
       const data = await response.json();
       
@@ -125,7 +126,7 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
-      }, 30000);
+      }); // Timeout automatically set based on environment
 
       const data = await response.json();
       
@@ -150,7 +151,7 @@ export const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ token }),
-      }, 30000);
+      }); // Timeout automatically set based on environment
 
       const data = await response.json();
       

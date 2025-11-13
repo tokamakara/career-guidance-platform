@@ -767,21 +767,21 @@ class AdminController {
   // Generate admissions report
   async generateAdmissionsReport(startDate, endDate) {
     try {
-      const applicationsSnapshot = await db.collection('educationApplications').get();
-      
-      const applications = applicationsSnapshot.docs.map(doc => doc.data());
-      const filteredApplications = applications.filter(app => {
+    const applicationsSnapshot = await db.collection('educationApplications').get();
+    
+    const applications = applicationsSnapshot.docs.map(doc => doc.data());
+    const filteredApplications = applications.filter(app => {
         const appDate = app.applicationDate?.toDate ? app.applicationDate.toDate() : new Date(app.applicationDate || app.appliedAt);
-        return (!startDate || appDate >= new Date(startDate)) && 
-               (!endDate || appDate <= new Date(endDate));
-      });
+      return (!startDate || appDate >= new Date(startDate)) && 
+             (!endDate || appDate <= new Date(endDate));
+    });
 
-      const statusCounts = filteredApplications.reduce((acc, app) => {
-        acc[app.status] = (acc[app.status] || 0) + 1;
-        return acc;
-      }, {});
+    const statusCounts = filteredApplications.reduce((acc, app) => {
+      acc[app.status] = (acc[app.status] || 0) + 1;
+      return acc;
+    }, {});
 
-      return {
+    return {
         data: filteredApplications.map(app => ({
           institutionName: app.institutionName || 'Unknown',
           courseName: app.courseName || 'Unknown',
@@ -790,7 +790,7 @@ class AdminController {
           rate: app.status === 'admitted' || app.status === 'accepted' ? '100%' : '0%'
         })),
         total: filteredApplications.length,
-        statusBreakdown: statusCounts,
+      statusBreakdown: statusCounts,
         topInstitutions: filteredApplications.length > 0 ? this.getTopInstitutions(filteredApplications) : [],
         popularCourses: filteredApplications.length > 0 ? this.getPopularCourses(filteredApplications) : [],
         period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
@@ -808,11 +808,11 @@ class AdminController {
   // Generate employment report
   async generateEmploymentReport(startDate, endDate) {
     try {
-      const jobsSnapshot = await db.collection('jobs').get();
-      const jobApplicationsSnapshot = await db.collection('jobApplications').get();
+    const jobsSnapshot = await db.collection('jobs').get();
+    const jobApplicationsSnapshot = await db.collection('jobApplications').get();
 
-      const jobs = jobsSnapshot.docs.map(doc => doc.data());
-      const jobApplications = jobApplicationsSnapshot.docs.map(doc => doc.data());
+    const jobs = jobsSnapshot.docs.map(doc => doc.data());
+    const jobApplications = jobApplicationsSnapshot.docs.map(doc => doc.data());
 
       // Filter by date range if provided
       let filteredJobs = jobs;
@@ -832,7 +832,7 @@ class AdminController {
         });
       }
 
-      return {
+    return {
         data: filteredJobs.map(job => ({
           companyName: job.companyName || 'Unknown',
           jobTitle: job.title || job.jobTitle || 'Unknown',
@@ -843,9 +843,9 @@ class AdminController {
         totalJobApplications: filteredApplications.length,
         activeJobs: filteredJobs.filter(job => job.status === 'open' || job.status === 'active').length,
         applicationStatus: filteredApplications.reduce((acc, app) => {
-          acc[app.status] = (acc[app.status] || 0) + 1;
-          return acc;
-        }, {}),
+        acc[app.status] = (acc[app.status] || 0) + 1;
+        return acc;
+      }, {}),
         period: startDate && endDate ? `${startDate} to ${endDate}` : 'All time'
       };
     } catch (error) {
@@ -861,13 +861,13 @@ class AdminController {
   // Generate system report
   async generateSystemReport(startDate, endDate) {
     try {
-      const usersSnapshot = await db.collection('users').get();
+    const usersSnapshot = await db.collection('users').get();
       const institutionsQuery = db.collection('users').where('role', '==', 'institute');
       const institutionsSnapshot = await institutionsQuery.get();
       const companiesQuery = db.collection('users').where('role', '==', 'company');
       const companiesSnapshot = await companiesQuery.get();
 
-      const users = usersSnapshot.docs.map(doc => doc.data());
+    const users = usersSnapshot.docs.map(doc => doc.data());
 
       // Filter users by date range if provided
       let filteredUsers = users;
@@ -879,7 +879,7 @@ class AdminController {
         });
       }
 
-      return {
+    return {
         data: filteredUsers.map(user => ({
           email: user.email || 'Unknown',
           role: user.role || 'Unknown',
@@ -887,14 +887,14 @@ class AdminController {
           createdAt: user.createdAt?.toDate ? user.createdAt.toDate().toISOString() : new Date(user.createdAt || 0).toISOString()
         })),
         total: filteredUsers.length,
-        totalUsers: users.length,
-        userGrowth: this.calculateUserGrowth(users, startDate, endDate),
-        roleDistribution: users.reduce((acc, user) => {
-          acc[user.role] = (acc[user.role] || 0) + 1;
-          return acc;
-        }, {}),
-        institutionStats: {
-          total: institutionsSnapshot.size,
+      totalUsers: users.length,
+      userGrowth: this.calculateUserGrowth(users, startDate, endDate),
+      roleDistribution: users.reduce((acc, user) => {
+        acc[user.role] = (acc[user.role] || 0) + 1;
+        return acc;
+      }, {}),
+      institutionStats: {
+        total: institutionsSnapshot.size,
           approved: institutionsSnapshot.docs.filter(doc => {
             const data = doc.data();
             return data.status === 'approved' || data.approvalStatus === 'approved';
@@ -903,9 +903,9 @@ class AdminController {
             const data = doc.data();
             return data.status === 'pending' || data.approvalStatus === 'pending';
           }).length
-        },
-        companyStats: {
-          total: companiesSnapshot.size,
+      },
+      companyStats: {
+        total: companiesSnapshot.size,
           approved: companiesSnapshot.docs.filter(doc => {
             const data = doc.data();
             return data.status === 'approved' || data.approvalStatus === 'approved';
@@ -1000,13 +1000,13 @@ class AdminController {
 
   calculateUserGrowth(users, startDate, endDate) {
     try {
-      const filteredUsers = users.filter(user => {
+    const filteredUsers = users.filter(user => {
         const userDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt || 0);
-        return (!startDate || userDate >= new Date(startDate)) && 
-               (!endDate || userDate <= new Date(endDate));
-      });
+      return (!startDate || userDate >= new Date(startDate)) && 
+             (!endDate || userDate <= new Date(endDate));
+    });
 
-      return filteredUsers.length;
+    return filteredUsers.length;
     } catch (error) {
       console.error('Calculate user growth error:', error);
       return 0;

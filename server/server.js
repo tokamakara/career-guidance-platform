@@ -20,6 +20,9 @@ const applicationRoutes = require('./routes/applicationRoutes');
 
 const app = express();
 
+// Trust proxy for Render.com (required for rate limiting behind proxy)
+app.set('trust proxy', 1);
+
 // Middlewares
 app.use(helmet());
 

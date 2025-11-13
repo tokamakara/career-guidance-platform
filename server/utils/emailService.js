@@ -20,22 +20,35 @@ class EmailService {
 
     try {
       this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
+      service: 'gmail',
+      auth: {
           user: emailUser,
           pass: emailPass
         }
       });
 
-      // Verify transporter configuration asynchronously
+      // Verify transporter configuration asynchronously (with timeout)
+      const verifyTimeout = setTimeout(() => {
+        console.error('❌ Email transporter verification timed out');
+        console.error('❌ This usually means:');
+        console.error('   1. EMAIL_PASS is incorrect (wrong App Password)');
+        console.error('   2. Network/firewall blocking Gmail SMTP connection');
+        console.error('   3. Gmail blocking the connection (check Google Account security)');
+        this.isConfigured = false;
+      }, 10000); // 10 second timeout for verification
+
       this.transporter.verify((error, success) => {
+        clearTimeout(verifyTimeout);
         if (error) {
           console.error('❌ Email transporter verification failed:', error.message);
+          console.error('❌ Error code:', error.code);
           console.error('❌ Check your EMAIL_USER and EMAIL_PASS environment variables');
           console.error('❌ Common issues:');
           console.error('   - EMAIL_PASS must be a Gmail App Password (not your regular password)');
+          console.error('   - App Password must be exactly 16 characters, no spaces');
           console.error('   - Enable 2-Step Verification in your Google Account');
           console.error('   - Generate App Password from: https://myaccount.google.com/apppasswords');
+          console.error('   - Check if "Less secure app access" is enabled (if using older Gmail)');
           this.isConfigured = false;
         } else {
           console.log('✅ Email service configured and verified');
