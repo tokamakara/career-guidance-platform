@@ -216,7 +216,20 @@ const Register = () => {
       ];
     }
 
+    console.log('🔍 Validating step 2 with rules:', Object.keys(validationRules));
+    console.log('🔍 Form data for validation:', {
+      password: formData.password ? '***' : 'empty',
+      confirmPassword: formData.confirmPassword ? '***' : 'empty',
+      institutionName: formData.institutionName,
+      phone: formData.phone,
+      role: formData.role
+    });
+
     const { errors: newErrors, isValid } = validateForm(formData, validationRules);
+    
+    console.log('🔍 Validation errors:', newErrors);
+    console.log('🔍 Is valid:', isValid);
+    
     setErrors(newErrors);
     setTouched(prev => ({
       ...prev,
@@ -428,20 +441,39 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    if (!validateStep2()) {
+    console.log('🔵 Form submit triggered', { step, role: formData.role });
+    console.log('🔵 Form data:', formData);
+    
+    const isValid = validateStep2();
+    console.log('🔵 Validation result:', isValid);
+    console.log('🔵 Current errors:', errors);
+    
+    if (!isValid) {
+      console.warn('⚠️ Validation failed, showing errors');
       addNotification({
         type: 'error',
         title: 'Validation Error',
-        message: 'Please fix the errors in the form'
+        message: 'Please fix the errors in the form before submitting'
       });
       return;
     }
 
+    console.log('✅ Validation passed, starting registration...');
     setLoading(true);
 
     try {
+      console.log('📤 Calling register with data:', {
+        email: formData.email,
+        role: formData.role,
+        hasInstitutionName: !!formData.institutionName,
+        hasPhone: !!formData.phone
+      });
+      
       await register(formData);
+      
+      console.log('✅ Registration successful');
       addNotification({
         type: 'success',
         title: 'Sign Up Successful',
@@ -456,10 +488,21 @@ const Register = () => {
         } 
       });
     } catch (error) {
+      console.error('❌ Registration error:', error);
+      
+      // Extract error message
+      let errorMessage = error.message || 'Sign up failed. Please try again.';
+      
+      // Check if it's an email already registered error
+      if (errorMessage.toLowerCase().includes('already registered') || 
+          errorMessage.toLowerCase().includes('email is already')) {
+        errorMessage = 'This email is already registered. Please use a different email or sign in instead.';
+      }
+      
       addNotification({
         type: 'error',
         title: 'Sign Up Failed',
-        message: error.message || 'Sign up failed. Please try again.'
+        message: errorMessage
       });
     } finally {
       setLoading(false);
@@ -493,7 +536,7 @@ const Register = () => {
                     placeholder="Enter your first name"
                     className={getFieldError('firstName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-z\s'-]+"
+                    pattern="[A-Za-z\s'\-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('firstName') && (
@@ -515,7 +558,7 @@ const Register = () => {
                     placeholder="Enter your last name"
                     className={getFieldError('lastName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-z\s'-]+"
+                    pattern="[A-Za-z\s'\-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('lastName') && (

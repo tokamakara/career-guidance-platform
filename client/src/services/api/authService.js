@@ -16,12 +16,18 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        // Extract error message from response
+        const errorMessage = data.message || data.error || 'Registration failed';
+        throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
-      throw new Error(error.message);
+      // If error already has a message, use it; otherwise create a user-friendly message
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(error.message || 'Registration failed. Please try again.');
     }
   },
 

@@ -46,40 +46,45 @@ class AuthController {
 
       // Add role-specific data
       if (role === 'institute') {
-        userProfile.institutionName = roleData.institutionName;
-        userProfile.institutionType = roleData.institutionType;
-        userProfile.location = roleData.location;
+        if (roleData.institutionName) userProfile.institutionName = roleData.institutionName;
+        if (roleData.institutionType) userProfile.institutionType = roleData.institutionType;
+        if (roleData.location) userProfile.location = roleData.location;
         userProfile.contactPerson = `${firstName} ${lastName}`;
-        userProfile.phone = roleData.phone;
-        userProfile.website = roleData.website;
-        userProfile.description = roleData.description;
+        if (roleData.phone) userProfile.phone = roleData.phone;
+        if (roleData.website) userProfile.website = roleData.website;
+        if (roleData.description) userProfile.description = roleData.description;
         // Note: Faculties and courses are stored as subcollections under institutions/{id}/faculties
         // This structure is kept for course management but institution data is in users collection
       }
 
       if (role === 'company') {
-        userProfile.companyName = roleData.companyName;
-        userProfile.industry = roleData.industry;
-        userProfile.size = roleData.size;
-        userProfile.website = roleData.website;
-        userProfile.description = roleData.description;
+        if (roleData.companyName) userProfile.companyName = roleData.companyName;
+        if (roleData.industry) userProfile.industry = roleData.industry;
+        if (roleData.size) userProfile.size = roleData.size;
+        if (roleData.website) userProfile.website = roleData.website;
+        if (roleData.description) userProfile.description = roleData.description;
         userProfile.contactPerson = `${firstName} ${lastName}`;
-        userProfile.phone = roleData.phone;
-        userProfile.location = roleData.location;
+        if (roleData.phone) userProfile.phone = roleData.phone;
+        if (roleData.location) userProfile.location = roleData.location;
       }
 
       if (role === 'student') {
-        userProfile.dateOfBirth = roleData.dateOfBirth;
-        userProfile.phone = roleData.phone;
-        userProfile.address = roleData.address;
-        userProfile.highSchool = roleData.highSchool;
+        if (roleData.dateOfBirth) userProfile.dateOfBirth = roleData.dateOfBirth;
+        if (roleData.phone) userProfile.phone = roleData.phone;
+        if (roleData.address) userProfile.address = roleData.address;
+        if (roleData.highSchool) userProfile.highSchool = roleData.highSchool;
         userProfile.highSchoolResults = [];
         userProfile.educationApplications = [];
         userProfile.jobApplications = [];
         userProfile.documents = {};
       }
 
-      await db.collection('users').doc(userRecord.uid).set(userProfile);
+      // Remove undefined values before saving to Firestore
+      const cleanUserProfile = Object.fromEntries(
+        Object.entries(userProfile).filter(([_, value]) => value !== undefined)
+      );
+
+      await db.collection('users').doc(userRecord.uid).set(cleanUserProfile);
 
       // Send verification email
       try {

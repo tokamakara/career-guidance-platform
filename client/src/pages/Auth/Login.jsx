@@ -267,17 +267,41 @@ const Login = () => {
           onClick={async () => {
             try {
               setLoading(true);
+              console.log('🔵 Google sign-in button clicked');
               await loginWithGoogle();
+              console.log('✅ Google sign-in successful');
               addNotification({
                 type: 'success',
                 title: 'Login Successful',
                 message: 'Welcome!'
               });
+              
+              // Wait a moment for userProfile to update, then navigate
+              setTimeout(() => {
+                const profile = userProfile || {};
+                if (profile.role) {
+                  navigate(`/${profile.role}/dashboard`);
+                } else {
+                  navigate('/student/dashboard'); // Default for Google sign-in
+                }
+              }, 500);
             } catch (error) {
+              console.error('❌ Google sign-in error:', error);
+              let errorMessage = error.message || 'Failed to sign in with Google';
+              
+              // Provide helpful error messages
+              if (errorMessage.includes('popup') || errorMessage.includes('blocked')) {
+                errorMessage = 'Popup was blocked. Please allow popups for this site and try again.';
+              } else if (errorMessage.includes('redirect_uri_mismatch')) {
+                errorMessage = 'Configuration error. Please contact support.';
+              } else if (errorMessage.includes('not verified')) {
+                errorMessage = 'This app is not verified. Please contact support.';
+              }
+              
               addNotification({
                 type: 'error',
                 title: 'Login Failed',
-                message: error.message || 'Failed to sign in with Google'
+                message: errorMessage
               });
             } finally {
               setLoading(false);
