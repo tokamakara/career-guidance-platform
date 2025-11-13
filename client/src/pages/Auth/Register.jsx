@@ -536,7 +536,6 @@ const Register = () => {
                     placeholder="Enter your first name"
                     className={getFieldError('firstName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-z\s'\-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('firstName') && (
@@ -558,7 +557,6 @@ const Register = () => {
                     placeholder="Enter your last name"
                     className={getFieldError('lastName') ? 'error' : ''}
                     disabled={loading}
-                    pattern="[A-Za-z\s'\-]+"
                     title="Only letters, spaces, hyphens, and apostrophes are allowed"
                   />
                   {getFieldError('lastName') && (
