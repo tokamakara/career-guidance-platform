@@ -331,77 +331,94 @@ class ApplicationController {
       const limit = parseInt(req.query.limit) || 10;
       const lastDocIdParam = req.query.lastDocId; // For cursor-based pagination
 
-      let query = db.collection('educationApplications')
-        .where('institutionId', '==', instituteId)
-        .orderBy('applicationDate', 'desc')
-        .limit(limit);
-
-      if (status) {
-        query = query.where('status', '==', status);
-      }
-
-      if (courseId) {
-        query = query.where('courseId', '==', courseId);
-      }
-
-      // For cursor-based pagination
-      if (lastDocIdParam && page > 1) {
-        const lastDoc = await db.collection('educationApplications').doc(lastDocIdParam).get();
-        if (lastDoc.exists) {
-          query = query.startAfter(lastDoc);
-        }
-      }
-
-      // Get total count (separate query)
-      let countQuery = db.collection('educationApplications')
+      // Get all applications for this institute first (to avoid index requirement)
+      let baseQuery = db.collection('educationApplications')
         .where('institutionId', '==', instituteId);
-      if (status) {
-        countQuery = countQuery.where('status', '==', status);
-      }
-      if (courseId) {
-        countQuery = countQuery.where('courseId', '==', courseId);
-      }
-      const totalSnapshot = await countQuery.get();
-      const total = totalSnapshot.size;
-      const totalPages = Math.ceil(total / limit);
+
+      // Get all documents first, then filter and sort in memory
+      const allDocs = await baseQuery.get();
+      
+      let applications = [];
+      allDocs.forEach(doc => {
+        const app = doc.data();
+        // Apply filters
+        if (status && app.status !== status) return;
+        if (courseId && app.courseId !== courseId) return;
+        applications.push({ id: doc.id, ...app });
+      });
+
+      // Sort by applicationDate descending
+      applications.sort((a, b) => {
+        const dateA = a.applicationDate?.toDate ? a.applicationDate.toDate() : new Date(a.applicationDate);
+        const dateB = b.applicationDate?.toDate ? b.applicationDate.toDate() : new Date(b.applicationDate);
+        return dateB - dateA;
+      });
 
       // Apply pagination
-      const snapshot = await query.get();
+      const total = applications.length;
+      const totalPages = Math.ceil(total / limit);
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedApplications = applications.slice(startIndex, endIndex);
 
-      const applications = [];
+      // Get student details for paginated applications
+      const applicationsWithStudents = [];
       let lastDocId = null;
       
-      for (const doc of snapshot.docs) {
-        const application = doc.data();
-        lastDocId = doc.id; // Track last document ID for next page
+      for (const application of paginatedApplications) {
+        lastDocId = application.id; // Track last document ID for next page
         
         // Get student details
-        const studentDoc = await db.collection('users').doc(application.studentId).get();
-        const studentData = studentDoc.data();
+        try {
+          const studentDoc = await db.collection('users').doc(application.studentId).get();
+          const studentData = studentDoc.exists ? studentDoc.data() : null;
 
-        applications.push({
-          id: doc.id,
-          ...application,
-          student: {
-            id: application.studentId,
-            firstName: studentData.firstName,
-            lastName: studentData.lastName,
-            email: studentData.email,
-            highSchool: studentData.highSchool,
-            highSchoolResults: studentData.highSchoolResults || []
-          }
-        });
+          applicationsWithStudents.push({
+            id: application.id,
+            ...application,
+            student: studentData ? {
+              id: application.studentId,
+              firstName: studentData.firstName || '',
+              lastName: studentData.lastName || '',
+              email: studentData.email || '',
+              highSchool: studentData.highSchool || '',
+              highSchoolResults: studentData.highSchoolResults || []
+            } : {
+              id: application.studentId,
+              firstName: 'Unknown',
+              lastName: '',
+              email: '',
+              highSchool: '',
+              highSchoolResults: []
+            }
+          });
+        } catch (studentError) {
+          console.error('Error fetching student data:', studentError);
+          // Include application without student data
+          applicationsWithStudents.push({
+            id: application.id,
+            ...application,
+            student: {
+              id: application.studentId,
+              firstName: 'Unknown',
+              lastName: '',
+              email: '',
+              highSchool: '',
+              highSchoolResults: []
+            }
+          });
+        }
       }
 
       res.json({
         success: true,
-        data: applications,
+        data: applicationsWithStudents,
         pagination: {
           page,
           limit,
           total,
           totalPages,
-          hasNextPage: snapshot.size === limit && page < totalPages,
+          hasNextPage: page < totalPages,
           hasPrevPage: page > 1,
           lastDocId: lastDocId // For cursor-based pagination
         }
@@ -422,26 +439,46 @@ class ApplicationController {
       const { courseId } = req.params;
       const instituteId = req.user.uid;
 
-      const applicationsSnapshot = await db.collection('educationApplications')
+      // Get all applications for this institute and course (avoid index requirement)
+      const allAppsSnapshot = await db.collection('educationApplications')
         .where('institutionId', '==', instituteId)
         .where('courseId', '==', courseId)
-        .orderBy('applicationDate', 'desc')
         .get();
+      
+      // Sort by applicationDate descending in memory
+      const allApps = [];
+      allAppsSnapshot.forEach(doc => {
+        allApps.push({ id: doc.id, ...doc.data() });
+      });
+      
+      allApps.sort((a, b) => {
+        const dateA = a.applicationDate?.toDate ? a.applicationDate.toDate() : new Date(a.applicationDate);
+        const dateB = b.applicationDate?.toDate ? b.applicationDate.toDate() : new Date(b.applicationDate);
+        return dateB - dateA;
+      });
 
       const applications = [];
-      for (const doc of applicationsSnapshot.docs) {
-        const application = doc.data();
-        
+      for (const application of allApps) {
         // Get student details
-        const studentDoc = await db.collection('users').doc(application.studentId).get();
-        const studentData = studentDoc.data();
+        try {
+          const studentDoc = await db.collection('users').doc(application.studentId).get();
+          const studentData = studentDoc.exists ? studentDoc.data() : null;
 
-        applications.push({
-          id: doc.id,
-          ...application,
-          studentName: `${studentData?.firstName || ''} ${studentData?.lastName || ''}`.trim(),
-          studentEmail: studentData?.email || ''
-        });
+          applications.push({
+            id: application.id,
+            ...application,
+            studentName: studentData ? `${studentData.firstName || ''} ${studentData.lastName || ''}`.trim() : 'Unknown',
+            studentEmail: studentData?.email || ''
+          });
+        } catch (studentError) {
+          console.error('Error fetching student data:', studentError);
+          applications.push({
+            id: application.id,
+            ...application,
+            studentName: 'Unknown',
+            studentEmail: ''
+          });
+        }
       }
 
       res.json({

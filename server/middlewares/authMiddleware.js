@@ -49,6 +49,11 @@ const requireRole = (roles) => {
       const userProfile = userDoc.data();
       req.userProfile = userProfile;
 
+      // Allow admins to access all routes (they can manage everything)
+      if (userProfile.role === 'admin') {
+        return next();
+      }
+
       if (!roles.includes(userProfile.role)) {
         return res.status(403).json({
           success: false,
