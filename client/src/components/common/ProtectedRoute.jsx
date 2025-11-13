@@ -23,15 +23,15 @@ const ProtectedRoute = ({
 
   // Check if user has the required role or is in allowed roles
   if (requiredRole && userProfile?.role !== requiredRole) {
-    if (allowedRoles.length > 0 && !allowedRoles.includes(userProfile?.role)) {
-      // Redirect to appropriate dashboard based on user role
-      const redirectPath = getRoleRedirectPath(userProfile?.role);
-      return <Navigate to={redirectPath} replace />;
-    }
-    
-    if (!requiredRole && allowedRoles.length === 0) {
-      return <Navigate to="/unauthorized" replace />;
-    }
+    // If user doesn't have required role, redirect to their appropriate dashboard
+    const redirectPath = getRoleRedirectPath(userProfile?.role);
+    return <Navigate to={redirectPath} replace />;
+  }
+  
+  // Check allowed roles if specified
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userProfile?.role)) {
+    const redirectPath = getRoleRedirectPath(userProfile?.role);
+    return <Navigate to={redirectPath} replace />;
   }
 
   // Block pending companies/institutes from accessing any pages except profile/settings

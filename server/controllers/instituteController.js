@@ -468,7 +468,7 @@ class InstituteController {
         message: 'Failed to fetch faculties'
       });
     }
-  },
+  }
 
   // Institute creates a faculty
   async createFaculty(req, res) {

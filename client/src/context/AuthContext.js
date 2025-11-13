@@ -46,17 +46,16 @@ export const AuthProvider = ({ children }) => {
         if (existingUser) {
           console.log('✅ User found in persisted session:', existingUser.email);
           
-          // Check if email is verified (for new registrations)
-          if (!existingUser.emailVerified) {
-            console.warn('⚠️ Email not verified - requiring verification');
-            // Don't set user as authenticated if email is not verified
-            setCurrentUser(null);
-            setUserProfile(null);
-            localStorage.removeItem('authToken');
-            return;
-          }
-          
+          // Allow unverified users to stay logged in (they can verify email later)
+          // The ProtectedRoute will handle redirecting them to verification page if needed
           setCurrentUser(existingUser);
+          
+          // Log email verification status
+          if (!existingUser.emailVerified) {
+            console.warn('⚠️ Email not verified - user can stay logged in to verify email');
+          } else {
+            console.log('✅ Email verified');
+          }
           
           // Get and store Firebase ID token for API authentication
           try {

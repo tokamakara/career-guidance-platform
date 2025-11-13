@@ -6,99 +6,99 @@ const admissionManager = require('../utils/admissionManager');
 
 class ApplicationController {
 
-// Add to applicationController class
-async checkCourseEligibility(req, res) {
-  try {
-    const { courseId, studentSubjects } = req.body;
-    const studentId = req.user.uid;
+  // Add to applicationController class
+  async checkCourseEligibility(req, res) {
+    try {
+      const { courseId, studentSubjects } = req.body;
+      const studentId = req.user.uid;
 
-    // Get course details
-    const courseQuery = await db.collectionGroup('courses')
-      .where('id', '==', courseId)
-      .get();
+      // Get course details
+      const courseQuery = await db.collectionGroup('courses')
+        .where('id', '==', courseId)
+        .get();
 
-    if (courseQuery.empty) {
-      return res.status(404).json({
+      if (courseQuery.empty) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+
+      const courseDoc = courseQuery.docs[0];
+      const course = courseDoc.data();
+
+      // Check eligibility based on requirements
+      const eligibilityResult = this.checkEligibility(studentSubjects, course.requirements);
+
+      res.json({
+        success: true,
+        data: {
+          eligible: eligibilityResult.eligible,
+          missingRequirements: eligibilityResult.missingRequirements,
+          course: {
+            id: courseId,
+            name: course.name,
+            requirements: course.requirements
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Check eligibility error:', error);
+      res.status(500).json({
         success: false,
-        message: 'Course not found'
+        message: 'Failed to check course eligibility'
       });
     }
+  }
 
-    const courseDoc = courseQuery.docs[0];
-    const course = courseDoc.data();
+  // Enhanced eligibility checker
+  checkEligibility(studentSubjects, courseRequirements) {
+    const missingRequirements = [];
 
-    // Check eligibility based on requirements
-    const eligibilityResult = this.checkEligibility(studentSubjects, course.requirements);
+    courseRequirements.forEach(requirement => {
+      const studentSubject = studentSubjects.find(
+        subject => subject.name === requirement.subject
+      );
 
-    res.json({
-      success: true,
-      data: {
-        eligible: eligibilityResult.eligible,
-        missingRequirements: eligibilityResult.missingRequirements,
-        course: {
-          id: courseId,
-          name: course.name,
-          requirements: course.requirements
-        }
+      if (!studentSubject) {
+        missingRequirements.push({
+          subject: requirement.subject,
+          requiredGrade: requirement.grade,
+          reason: 'Subject not completed'
+        });
+        return;
+      }
+
+      const meetsRequirement = this.meetsGradeRequirement(studentSubject.grade, requirement.grade);
+      
+      if (!meetsRequirement) {
+        missingRequirements.push({
+          subject: requirement.subject,
+          requiredGrade: requirement.grade,
+          studentGrade: studentSubject.grade,
+          reason: 'Grade too low'
+        });
       }
     });
 
-  } catch (error) {
-    console.error('Check eligibility error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to check course eligibility'
-    });
+    return {
+      eligible: missingRequirements.length === 0,
+      missingRequirements
+    };
   }
-}
 
-// Enhanced eligibility checker
-checkEligibility(studentSubjects, courseRequirements) {
-  const missingRequirements = [];
+  // Check if student grade meets required grade
+  meetsGradeRequirement(studentGrade, requiredGrade) {
+    const GRADE_POINTS = {
+      'A*': 1, 'A': 2, 'B': 3, 'C': 4, 'D': 5, 'E': 6, 'F': 7, 'G': 8
+    };
 
-  courseRequirements.forEach(requirement => {
-    const studentSubject = studentSubjects.find(
-      subject => subject.name === requirement.subject
-    );
+    const studentPoints = GRADE_POINTS[studentGrade] || 9; // Lower number = better grade
+    const requiredPoints = GRADE_POINTS[requiredGrade] || 9;
 
-    if (!studentSubject) {
-      missingRequirements.push({
-        subject: requirement.subject,
-        requiredGrade: requirement.grade,
-        reason: 'Subject not completed'
-      });
-      return;
-    }
-
-    const meetsRequirement = this.meetsGradeRequirement(studentSubject.grade, requirement.grade);
-    
-    if (!meetsRequirement) {
-      missingRequirements.push({
-        subject: requirement.subject,
-        requiredGrade: requirement.grade,
-        studentGrade: studentSubject.grade,
-        reason: 'Grade too low'
-      });
-    }
-  });
-
-  return {
-    eligible: missingRequirements.length === 0,
-    missingRequirements
-  };
-}
-
-// Check if student grade meets required grade
-meetsGradeRequirement(studentGrade, requiredGrade) {
-  const GRADE_POINTS = {
-    'A*': 1, 'A': 2, 'B': 3, 'C': 4, 'D': 5, 'E': 6, 'F': 7, 'G': 8
-  };
-
-  const studentPoints = GRADE_POINTS[studentGrade] || 9; // Lower number = better grade
-  const requiredPoints = GRADE_POINTS[requiredGrade] || 9;
-
-  return studentPoints <= requiredPoints; // Student grade is equal or better
-}
+    return studentPoints <= requiredPoints; // Student grade is equal or better
+  }
 
   // Apply to a course
   async createApplication(req, res) {
@@ -456,7 +456,7 @@ meetsGradeRequirement(studentGrade, requiredGrade) {
         message: 'Failed to fetch course applications'
       });
     }
-  },
+  }
 
   // Update application status (Institute)
   async updateApplicationStatus(req, res) {
